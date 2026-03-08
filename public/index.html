@@ -212,90 +212,196 @@
       width: 220px;
     }
 
-    /* ========== MAIN SEARCH HERO ========== */
-    .main-search-hero {
+    /* ========== HERO ========== */
+    .hero {
+      position: relative;
+      height: 60vh;
+      min-height: 400px;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 120px 20px 40px;
-      min-height: 40vh;
+      align-items: flex-end;
+      overflow: hidden;
       margin-top: var(--nav-height);
-      background: #141414;
     }
 
-    .main-search-container {
-      width: 100%;
-      max-width: 800px;
+    @media (max-width: 768px) {
+      .hero {
+        height: 50vh;
+        min-height: 350px;
+      }
     }
 
-    .main-search-title {
-      font-size: 14px;
-      color: #aaa;
-      letter-spacing: 2px;
+    .hero-backdrop {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center top;
+      filter: brightness(0.5);
+      transform: scale(1.05);
+      transition: all 1s ease;
+    }
+
+    .hero-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom,
+          rgba(10, 10, 15, 0.1) 0%,
+          rgba(10, 10, 15, 0) 30%,
+          rgba(10, 10, 15, 0.6) 65%,
+          rgba(10, 10, 15, 1) 100%),
+        linear-gradient(to right,
+          rgba(10, 10, 15, 0.8) 0%,
+          rgba(10, 10, 15, 0) 50%);
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      padding: 0 40px 60px;
+      max-width: 1000px;
+      animation: fadeSlideUp 0.8s ease;
+    }
+
+    @media (max-width: 768px) {
+      .hero-content {
+        padding: 0 20px 40px;
+      }
+    }
+
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
       margin-bottom: 12px;
-      text-transform: uppercase;
+    }
+
+    .hero-badge {
+      background: #E50914;
+      color: #000;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 4px;
+      letter-spacing: 1px;
+    }
+
+    .hero-rating,
+    .hero-year {
+      color: var(--text-secondary);
+      font-size: 15px;
       font-weight: 600;
     }
 
-    .main-search-box {
-      display: flex;
-      background: var(--bg-card);
-      border: 1px solid #333;
-      border-radius: 8px;
-      overflow: hidden;
-      margin-bottom: 24px;
+    .hero-rating {
+      color: #fcd34d;
     }
 
-    .main-search-box input {
-      flex: 1;
-      background: transparent;
+    .hero-title {
+      font-size: clamp(32px, 6vw, 64px);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .hero-overview {
+      font-size: 18px;
+      line-height: 1.6;
+      color: rgba(240, 240, 240, 0.9);
+      margin-bottom: 24px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      max-width: 800px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-play,
+    .btn-primary,
+    .btn-watch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #E50914;
+      color: #000;
       border: none;
-      color: #fff;
-      padding: 16px 20px;
+      border-radius: 8px;
+      padding: 14px 28px;
       font-size: 16px;
-      outline: none;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
       font-family: 'Inter', sans-serif;
     }
 
-    .main-search-box button {
-      background: linear-gradient(90deg, #fcd34d, #f59e0b);
+    .btn-play:hover,
+    .btn-primary:hover,
+    .btn-watch:hover {
+      background: #b80710;
+      transform: translateY(-2px);
+    }
+
+    .btn-trailer {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
       color: #000;
       border: none;
-      padding: 0 32px;
+      border-radius: 8px;
+      padding: 14px 28px;
+      font-size: 16px;
       font-weight: 700;
-      font-size: 15px;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-
-    .main-search-box button:hover {
-      opacity: 0.9;
-    }
-
-    .main-search-genres {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: flex-start;
-    }
-
-    .genre-filter {
-      background: var(--bg-card);
-      border: 1px solid #333;
-      color: #aaa;
-      padding: 8px 20px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
     }
 
-    .genre-filter.active,
-    .genre-filter:hover {
-      border-color: #fcd34d;
-      color: #fcd34d;
+    .btn-trailer:hover {
+      background: #e6e6e6;
+      transform: translateY(-2px);
+    }
+
+    .btn-info,
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .btn-info:hover,
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
     }
 
     /* ========== MAIN CONTENT ========== */
@@ -317,7 +423,7 @@
     }
 
     .section-title {
-      font-size: 20px;
+      font-size: 24px;
       font-weight: 700;
       color: #fff;
       letter-spacing: -0.3px;
@@ -357,8 +463,8 @@
 
     /* ========== CARD ========== */
     .card {
-      flex: 0 0 180px;
-      width: 180px;
+      flex: 0 0 220px;
+      width: 220px;
       border-radius: var(--radius-md);
       overflow: hidden;
       background: var(--bg-card);
@@ -387,7 +493,7 @@
     }
 
     .card-title {
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 600;
       color: #fff;
       white-space: nowrap;
@@ -443,7 +549,7 @@
     /* ========== CARD GRID (for search results) ========== */
     .card-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 20px;
     }
 
@@ -736,30 +842,6 @@
       box-shadow: var(--shadow-glow);
     }
 
-    .btn-watch {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #E50914;
-      color: #000;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 22px;
-      font-size: 14px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: 'Inter', sans-serif;
-      box-shadow: var(--shadow-glow);
-      white-space: nowrap;
-    }
-
-    .btn-watch:hover {
-      background: #b80710;
-      transform: translateY(-2px);
-      box-shadow: 0 0 30px rgba(229, 9, 20, 0.5);
-    }
-
     /* ========== EPISODE SELECTOR ========== */
     .episode-selector {
       display: flex;
@@ -883,6 +965,9 @@
 
     .modal-actions {
       margin-bottom: 32px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
     }
 
     /* Similar */
@@ -1020,6 +1105,10 @@
 
       .modal-title {
         font-size: 22px;
+      }
+
+      .modal {
+        max-height: 85vh;
       }
 
       .similar-grid {
@@ -1317,24 +1406,33 @@
     </div>
   </nav>
 
-  <!-- MAIN SEARCH HERO -->
-  <section class="main-search-hero" id="hero">
-    <div class="main-search-container">
-      <h1 class="main-search-title">Cari Film</h1>
-      <div class="main-search-box">
-        <input type="text" id="main-search-input" placeholder="Judul film, seri, dokumenter..." autocomplete="off">
-        <button id="main-search-btn">CARI</button>
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="hero-backdrop" id="hero-backdrop"></div>
+    <div class="hero-gradient"></div>
+    <div class="hero-content">
+      <div class="hero-meta">
+        <span class="hero-badge" id="hero-type">MOVIE</span>
+        <span class="hero-year" id="hero-year">2023</span>
+        <span class="hero-rating" id="hero-rating">★ 8.5</span>
       </div>
-      <div class="main-search-genres">
-        <button class="genre-filter active" data-genre="all">Semua</button>
-        <button class="genre-filter" data-genre="action">Aksi</button>
-        <button class="genre-filter" data-genre="comedy">Komedi</button>
-        <button class="genre-filter" data-genre="drama">Drama</button>
-        <button class="genre-filter" data-genre="horror">Horor</button>
-        <button class="genre-filter" data-genre="scifi">Sci-Fi</button>
-        <button class="genre-filter" data-genre="romance">Romansa</button>
-        <button class="genre-filter" data-genre="anime">Animasi</button>
-        <button class="genre-filter" data-genre="thriller">Thriller</button>
+      <h1 class="hero-title" id="hero-title">Memuat...</h1>
+      <p class="hero-overview" id="hero-overview"></p>
+      <div class="hero-actions">
+        <button class="btn-play" id="hero-play-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+          Tonton Sekarang
+        </button>
+        <button class="btn-info" id="hero-info-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          Selengkapnya
+        </button>
       </div>
     </div>
   </section>
@@ -1529,7 +1627,7 @@
         <p class="modal-overview" id="modal-overview"></p>
         <div class="modal-genres" id="modal-genres"></div>
         <div class="modal-actions">
-          <button class="btn btn-primary" id="modal-play-btn">
+          <button class="btn-trailer" id="modal-play-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <polygon points="5 3 19 12 5 21 5 3" />
             </svg>
@@ -1680,16 +1778,10 @@
         };
         const imgUrl = ep.still_path ? IMG_W500 + ep.still_path : 'https://via.placeholder.com/300x170/111118/333344?text=No+Image';
 
-        // Handle long synopsis with "See More" inline
+        // Handle long synopsis clicking to expand
         const epOverview = ep.overview || 'No synopsis available.';
-        let synopsisHtml = '';
-        if (epOverview.length > 90) {
-          const safeFull = epOverview.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-          const shortText = epOverview.substring(0, 90) + '... ';
-          synopsisHtml = `<span class="ep-text" data-full="${safeFull}">${shortText}</span><span class="ep-more" style="color:#E50914; cursor:pointer;" onclick="event.stopPropagation(); this.previousElementSibling.textContent = this.previousElementSibling.dataset.full; this.remove();">See more</span>`;
-        } else {
-          synopsisHtml = `<span>${epOverview}</span>`;
-        }
+        const safeFull = epOverview.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const synopsisHtml = `<span style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; cursor:pointer;" onclick="this.style.display='block';">${safeFull}</span>`;
 
         epCard.innerHTML = `
             <img class="ep-img" src="${imgUrl}" style="width:130px; height:74px; object-fit:cover; border-radius:4px; flex-shrink:0;">
@@ -1739,6 +1831,32 @@
       toast.textContent = msg;
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), duration);
+    }
+
+    // ============================================================
+    // HERO SECTION
+    // ============================================================
+    async function loadHero() {
+      const data = await tmdb('/trending/all/week');
+      if (!data.results?.length) return;
+
+      const item = data.results[Math.floor(Math.random() * Math.min(10, data.results.length))];
+      heroItem = item;
+
+      const type = item.media_type || 'movie';
+      const title = item.title || item.name || '';
+      const year = getYear(item.release_date || item.first_air_date);
+      const rating = item.vote_average;
+
+      heroBd.style.backgroundImage = `url('${backdropUrl(item.backdrop_path)}')`;
+      heroTitle.textContent = title;
+      heroOverview.textContent = item.overview || 'Konten pilihan untuk kamu.';
+      heroRating.textContent = getRating(rating);
+      heroYear.textContent = year;
+      heroType.textContent = type === 'tv' ? 'SERIES' : 'MOVIE';
+
+      heroPlayBtn.onclick = () => openModal(item.id, type, true);
+      heroInfoBtn.onclick = () => openModal(item.id, type, false);
     }
 
     // ============================================================
@@ -1901,6 +2019,7 @@
       document.getElementById('episode-selector')?.remove();
       // Remove old action buttons
       document.getElementById('stream-actions')?.remove();
+      document.getElementById('watch-now-btn')?.remove();
 
       try {
         const [detail, videoDataID, videoDataEN, similar] = await Promise.all([
@@ -1930,13 +2049,9 @@
 
         modalTitle.textContent = title;
         const fullDesc = detail.overview || 'Tidak ada deskripsi.';
-        if (fullDesc.length > 200) {
-          const safeDesc = fullDesc.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-          const shortDesc = fullDesc.substring(0, 200) + '... ';
-          modalOverview.innerHTML = `<span>${shortDesc}</span><span style="color:#E50914;cursor:pointer;font-weight:600;" onclick="this.previousElementSibling.innerHTML = '${safeDesc}'; this.remove();"> See more</span>`;
-        } else {
-          modalOverview.textContent = fullDesc;
-        }
+        const safeDesc = fullDesc.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+        modalOverview.innerHTML = `<span style="color:rgba(240, 240, 240, 0.9);">${safeDesc}</span>`;
 
         modalYear.textContent = year;
         modalRuntime.textContent = runtime;
@@ -2017,8 +2132,11 @@
           }
         };
 
+        const modalActions = document.querySelector('.modal-actions');
+        modalActions.appendChild(watchBtn);
+
+        // Let serverWrap stay in actionsDiv before similarSection or put it inside modal detail
         actionsDiv.appendChild(serverWrap);
-        actionsDiv.appendChild(watchBtn);
 
         // ── Episode selector for TV ──
         if (type === 'tv' && detail.number_of_seasons) {
@@ -2366,43 +2484,6 @@
     });
 
     // ============================================================
-    // MAIN SEARCH EVENT LISTENERS
-    // ============================================================
-    const mainSearchInput = document.getElementById('main-search-input');
-    const mainSearchBtn = document.getElementById('main-search-btn');
-
-    if (mainSearchBtn) {
-      mainSearchBtn.addEventListener('click', () => {
-        doSearch(mainSearchInput.value.trim());
-      });
-    }
-
-    if (mainSearchInput) {
-      mainSearchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          doSearch(e.target.value.trim());
-        }
-      });
-    }
-
-    document.querySelectorAll('.genre-filter').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.genre-filter').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const g = btn.dataset.genre;
-        if (g === 'all') {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else {
-          const el = document.getElementById('section-' + g);
-          if (el) {
-            const y = el.getBoundingClientRect().top + window.scrollY - 80;
-            window.scrollTo({ top: y, behavior: 'smooth' });
-          }
-        }
-      });
-    });
-
-    // ============================================================
     // INIT
     // ============================================================
     (async () => {
@@ -2416,7 +2497,7 @@
           }
         });
 
-      await loadAllRows();
+      await Promise.all([loadHero(), loadAllRows()]);
     })();
 
     function render10Skeletons(row) {
