@@ -212,186 +212,96 @@
       width: 220px;
     }
 
-    /* ========== HERO ========== */
-    .hero {
-      position: relative;
-      height: 100vh;
-      min-height: 600px;
+    /* ========== MAIN SEARCH HERO ========== */
+    .main-search-hero {
       display: flex;
-      align-items: flex-end;
-      overflow: hidden;
-    }
-
-    .hero-backdrop {
-      position: absolute;
-      inset: 0;
-      background-size: cover;
-      background-position: center top;
-      filter: brightness(0.5);
-      transform: scale(1.05);
-      transition: all 1s ease;
-    }
-
-    .hero-gradient {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to bottom,
-          rgba(10, 10, 15, 0.1) 0%,
-          rgba(10, 10, 15, 0) 30%,
-          rgba(10, 10, 15, 0.6) 65%,
-          rgba(10, 10, 15, 1) 100%),
-        linear-gradient(to right,
-          rgba(10, 10, 15, 0.8) 0%,
-          rgba(10, 10, 15, 0) 50%);
-    }
-
-    .hero-content {
-      position: relative;
-      z-index: 2;
-      padding: 0 64px 96px;
-      max-width: 620px;
-      animation: fadeSlideUp 0.8s ease;
-    }
-
-    @keyframes fadeSlideUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .hero-meta {
-      display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
+      justify-content: center;
+      padding: 120px 20px 40px;
+      min-height: 40vh;
+      margin-top: var(--nav-height);
+      background: #141414;
     }
 
-    .hero-badge {
-      background: #E50914;
-      color: #000;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 4px;
-      letter-spacing: 1px;
+    .main-search-container {
+      width: 100%;
+      max-width: 800px;
     }
 
-    .hero-rating,
-    .hero-year {
-      color: var(--text-secondary);
+    .main-search-title {
       font-size: 14px;
-      font-weight: 500;
+      color: #aaa;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      font-weight: 600;
     }
 
-    .hero-rating {
-      color: #fcd34d;
-    }
-
-    .hero-title {
-      font-size: clamp(28px, 5vw, 52px);
-      font-weight: 900;
-      line-height: 1.1;
-      letter-spacing: -1px;
-      margin-bottom: 16px;
-      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
-    }
-
-    .hero-overview {
-      font-size: 16px;
-      line-height: 1.7;
-      color: rgba(240, 240, 240, 0.8);
-      margin-bottom: 28px;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .hero-actions {
+    .main-search-box {
       display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
+      background: var(--bg-card);
+      border: 1px solid #333;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 24px;
     }
 
-    /* Buttons */
-    .btn-play {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #E50914;
+    .main-search-box input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #fff;
+      padding: 16px 20px;
+      font-size: 16px;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .main-search-box button {
+      background: linear-gradient(90deg, #fcd34d, #f59e0b);
       color: #000;
       border: none;
-      border-radius: 10px;
-      padding: 12px 24px;
-      font-size: 15px;
+      padding: 0 32px;
       font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: 'Inter', sans-serif;
-      box-shadow: var(--shadow-glow);
-    }
-
-    .btn-play:hover {
-      background: #b80710;
-      transform: translateY(-2px);
-      box-shadow: 0 0 30px rgba(229, 9, 20, 0.45);
-    }
-
-    .btn-info {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      padding: 12px 24px;
       font-size: 15px;
-      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .main-search-box button:hover {
+      opacity: 0.9;
+    }
+
+    .main-search-genres {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-start;
+    }
+
+    .genre-filter {
+      background: var(--bg-card);
+      border: 1px solid #333;
+      color: #aaa;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
-      font-family: 'Inter', sans-serif;
-      backdrop-filter: blur(10px);
     }
 
-    .btn-info:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateY(-2px);
-    }
-
-    .hero-scroll-hint {
-      position: absolute;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: rgba(255, 255, 255, 0.3);
-      animation: bounce 2s infinite;
-      z-index: 2;
-    }
-
-    @keyframes bounce {
-
-      0%,
-      100% {
-        transform: translateX(-50%) translateY(0);
-      }
-
-      50% {
-        transform: translateX(-50%) translateY(8px);
-      }
+    .genre-filter.active,
+    .genre-filter:hover {
+      border-color: #fcd34d;
+      color: #fcd34d;
     }
 
     /* ========== MAIN CONTENT ========== */
     .main {
       padding: 0 32px 64px;
-      max-width: 1600px;
+      max-width: 100%;
       margin: 0 auto;
     }
 
@@ -1280,71 +1190,99 @@
       font-size: 12px;
       color: #aaa;
     }
-  .search-suggestions {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  width: 300px;
-  background: #141414;
-  border: 1px solid #333;
-  border-radius: 8px;
-  margin-top: 8px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-  display: none;
-  flex-direction: column;
-  z-index: 1000;
-  max-height: 400px;
-  overflow-y: auto;
-}
-.search-suggestions.active {
-  display: flex;
-}
-.sugg-item {
-  display: flex;
-  gap: 12px;
-  padding: 10px;
-  cursor: pointer;
-  border-bottom: 1px solid #222;
-  transition: background 0.2s;
-}
-.sugg-item:hover {
-  background: rgba(229, 9, 20, 0.1);
-}
-.sugg-item:last-child {
-  border-bottom: none;
-}
-.sugg-img {
-  width: 40px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-.sugg-info {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.sugg-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 4px;
-}
-.sugg-meta {
-  font-size: 11px;
-  color: #aaa;
-}
-@media (max-width: 768px) {
-  .logo-text { font-size: 20px !important; }
-  .search-wrap.open .search-input { width: 140px; }
-  .search-suggestions { width: 240px; }
-}
-@media (max-width: 480px) {
-  .logo-text { font-size: 18px !important; }
-  .search-wrap.open .search-input { width: 120px; font-size: 12px; }
-  .search-suggestions { width: 220px; }
-}
-</style>
+
+    #search-suggestions {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      width: 300px;
+      background: #141414;
+      border: 1px solid #333;
+      border-radius: 8px;
+      margin-top: 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+      display: none;
+      flex-direction: column;
+      z-index: 1000;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    #search-suggestions.active {
+      display: flex;
+    }
+
+    .sugg-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #222;
+      transition: background 0.2s;
+    }
+
+    .sugg-item:hover {
+      background: rgba(229, 9, 20, 0.1);
+    }
+
+    .sugg-item:last-child {
+      border-bottom: none;
+    }
+
+    .sugg-img {
+      width: 40px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .sugg-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .sugg-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .sugg-meta {
+      font-size: 11px;
+      color: #aaa;
+    }
+
+    @media (max-width: 768px) {
+      .logo-text {
+        font-size: 20px !important;
+      }
+
+      .search-wrap.open .search-input {
+        width: 140px;
+      }
+
+      .search-suggestions {
+        width: 240px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .logo-text {
+        font-size: 18px !important;
+      }
+
+      .search-wrap.open .search-input {
+        width: 120px;
+        font-size: 12px;
+      }
+
+      .search-suggestions {
+        width: 220px;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -1379,39 +1317,25 @@
     </div>
   </nav>
 
-  <!-- HERO SECTION -->
-  <section class="hero" id="hero">
-    <div class="hero-backdrop" id="hero-backdrop"></div>
-    <div class="hero-gradient"></div>
-    <div class="hero-content" id="hero-content">
-      <div class="hero-meta">
-        <span class="hero-badge" id="hero-type">MOVIE</span>
-        <span class="hero-rating" id="hero-rating">★ 8.5</span>
-        <span class="hero-year" id="hero-year">2024</span>
+  <!-- MAIN SEARCH HERO -->
+  <section class="main-search-hero" id="hero">
+    <div class="main-search-container">
+      <h1 class="main-search-title">Cari Film</h1>
+      <div class="main-search-box">
+        <input type="text" id="main-search-input" placeholder="Judul film, seri, dokumenter..." autocomplete="off">
+        <button id="main-search-btn">CARI</button>
       </div>
-      <h1 class="hero-title" id="hero-title">Loading...</h1>
-      <p class="hero-overview" id="hero-overview">Loading the best content for you...</p>
-      <div class="hero-actions">
-        <button class="btn btn-primary" id="hero-play-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <polygon points="5 3 19 12 5 21 5 3" />
-          </svg>
-          Play Trailer
-        </button>
-        <button class="btn btn-secondary" id="hero-info-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          More Info
-        </button>
+      <div class="main-search-genres">
+        <button class="genre-filter active" data-genre="all">Semua</button>
+        <button class="genre-filter" data-genre="action">Aksi</button>
+        <button class="genre-filter" data-genre="comedy">Komedi</button>
+        <button class="genre-filter" data-genre="drama">Drama</button>
+        <button class="genre-filter" data-genre="horror">Horor</button>
+        <button class="genre-filter" data-genre="scifi">Sci-Fi</button>
+        <button class="genre-filter" data-genre="romance">Romansa</button>
+        <button class="genre-filter" data-genre="anime">Animasi</button>
+        <button class="genre-filter" data-genre="thriller">Thriller</button>
       </div>
-    </div>
-    <div class="hero-scroll-hint">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 5v14m-7-7 7 7 7-7" />
-      </svg>
     </div>
   </section>
 
@@ -1517,6 +1441,36 @@
       </div>
     </section>
 
+    <!-- Drama -->
+    <section class="content-section" id="section-drama">
+      <div class="section-header">
+        <h2 class="section-title">🎭 Drama</h2>
+      </div>
+      <div class="card-row" id="row-drama">
+        <div class="card-skeleton-row"></div>
+      </div>
+    </section>
+
+    <!-- Romance -->
+    <section class="content-section" id="section-romance">
+      <div class="section-header">
+        <h2 class="section-title">💖 Romansa</h2>
+      </div>
+      <div class="card-row" id="row-romance">
+        <div class="card-skeleton-row"></div>
+      </div>
+    </section>
+
+    <!-- Thriller -->
+    <section class="content-section" id="section-thriller">
+      <div class="section-header">
+        <h2 class="section-title">🔪 Thriller</h2>
+      </div>
+      <div class="card-row" id="row-thriller">
+        <div class="card-skeleton-row"></div>
+      </div>
+    </section>
+
   </main>
 
   <!-- FOOTER -->
@@ -1615,6 +1569,11 @@
     // Streaming servers - pakai TMDB ID langsung
     const STREAMING_SERVERS = [
       {
+        name: '2embed',
+        movieUrl: (id) => `https://www.2embed.cc/embed/${id}`,
+        tvUrl: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
+      },
+      {
         name: 'VidSrc',
         movieUrl: (id) => `https://vidsrc.to/embed/movie/${id}`,
         tvUrl: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
@@ -1623,11 +1582,6 @@
         name: 'VidSrc Pro',
         movieUrl: (id) => `https://vidsrc.pro/embed/movie/${id}`,
         tvUrl: (id, s, e) => `https://vidsrc.pro/embed/tv/${id}/${s}/${e}`,
-      },
-      {
-        name: '2embed',
-        movieUrl: (id) => `https://www.2embed.cc/embed/${id}`,
-        tvUrl: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`,
       },
       {
         name: 'Smashy',
@@ -1641,7 +1595,7 @@
       },
     ];
 
-    let activeServer = 2; // 2embed default  // default server index
+    let activeServer = 0; // 2embed default  // default server index
     let currentStream = null; // { id, type, season, episode }
 
     // Genre IDs (TMDB)
@@ -1652,6 +1606,8 @@
       scifi: 878,
       anime: 16,  // animation
       drama: 18,
+      romance: 10749,
+      thriller: 53
     };
 
     // ============================================================
@@ -1723,11 +1679,23 @@
           renderEpisodesList(tvId, seasonNum);
         };
         const imgUrl = ep.still_path ? IMG_W500 + ep.still_path : 'https://via.placeholder.com/300x170/111118/333344?text=No+Image';
+
+        // Handle long synopsis with "See More" inline
+        const epOverview = ep.overview || 'No synopsis available.';
+        let synopsisHtml = '';
+        if (epOverview.length > 90) {
+          const safeFull = epOverview.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          const shortText = epOverview.substring(0, 90) + '... ';
+          synopsisHtml = `<span class="ep-text" data-full="${safeFull}">${shortText}</span><span class="ep-more" style="color:#E50914; cursor:pointer;" onclick="event.stopPropagation(); this.previousElementSibling.textContent = this.previousElementSibling.dataset.full; this.remove();">See more</span>`;
+        } else {
+          synopsisHtml = `<span>${epOverview}</span>`;
+        }
+
         epCard.innerHTML = `
             <img class="ep-img" src="${imgUrl}" style="width:130px; height:74px; object-fit:cover; border-radius:4px; flex-shrink:0;">
             <div style="display:flex; flex-direction:column; justify-content:center; overflow:hidden;">
             <h4 style="font-size:14px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px;">${ep.episode_number}. ${ep.name}</h4>
-            <p style="font-size:12px; color:#aaa; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${ep.overview || 'No synopsis available.'}</p>
+            <p style="font-size:12px; color:#aaa; display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;">${synopsisHtml}</p>
             </div>
         `;
         epsContainer.appendChild(epCard);
@@ -1843,38 +1811,13 @@
       items.forEach(item => row.appendChild(createCard(item, mediaType)));
     }
 
-    // ============================================================
-    // HERO SECTION
-    // ============================================================
-    async function loadHero() {
-      const data = await tmdb('/trending/all/week');
-      if (!data.results?.length) return;
 
-      // Pick a random item from top 10
-      const item = data.results[Math.floor(Math.random() * Math.min(10, data.results.length))];
-      heroItem = item;
-
-      const type = item.media_type || 'movie';
-      const title = item.title || item.name || '';
-      const year = getYear(item.release_date || item.first_air_date);
-      const rating = item.vote_average;
-
-      heroBd.style.backgroundImage = `url('${backdropUrl(item.backdrop_path)}')`;
-      heroTitle.textContent = title;
-      heroOverview.textContent = item.overview || 'Konten pilihan untuk kamu.';
-      heroRating.textContent = getRating(rating);
-      heroYear.textContent = year;
-      heroType.textContent = type === 'tv' ? 'SERIES' : 'MOVIE';
-
-      heroPlayBtn.onclick = () => openModal(item.id, type, true);
-      heroInfoBtn.onclick = () => openModal(item.id, type, false);
-    }
 
     // ============================================================
     // DATA LOADING
     // ============================================================
     async function loadAllRows() {
-      const [trending, movies, series, topRated, action, horror, comedy, scifi, anime] = await Promise.all([
+      const [trending, movies, series, topRated, action, horror, comedy, scifi, anime, drama, romance, thriller] = await Promise.all([
         tmdb('/trending/all/week'),
         tmdb('/movie/popular'),
         tmdb('/tv/popular'),
@@ -1884,6 +1827,9 @@
         tmdb('/discover/movie', { with_genres: GENRES.comedy }),
         tmdb('/discover/movie', { with_genres: GENRES.scifi }),
         tmdb('/discover/tv', { with_genres: GENRES.anime }),
+        tmdb('/discover/movie', { with_genres: GENRES.drama }),
+        tmdb('/discover/movie', { with_genres: GENRES.romance }),
+        tmdb('/discover/movie', { with_genres: GENRES.thriller }),
       ]);
 
       renderRow('row-trending', trending.results);
@@ -1895,6 +1841,9 @@
       renderRow('row-comedy', comedy.results, 'movie');
       renderRow('row-scifi', scifi.results, 'movie');
       renderRow('row-anime', anime.results, 'tv');
+      renderRow('row-drama', drama.results, 'movie');
+      renderRow('row-romance', romance.results, 'movie');
+      renderRow('row-thriller', thriller.results, 'movie');
     }
 
     // ============================================================
@@ -1913,13 +1862,6 @@
       playerPlaceh.style.display = 'none';
       streamContainer.style.display = 'block';
       streamIframe.src = buildStreamUrl(id, type, season, episode);
-
-      const year = parseInt(currentItem?.release_date?.substring(0, 4) || currentItem?.first_air_date?.substring(0, 4) || 0);
-      if (year >= 2024) {
-        showToast(`▶ Memutar via ${STREAMING_SERVERS[activeServer].name}... (Catatan: Film/Series baru mungkin belum ada di server gratis)`, 4000);
-      } else {
-        showToast(`▶ Memutar via ${STREAMING_SERVERS[activeServer].name}...`);
-      }
     }
 
     function switchServer(idx) {
@@ -1987,7 +1929,15 @@
         const rating = detail.vote_average?.toFixed(1) || 'N/A';
 
         modalTitle.textContent = title;
-        modalOverview.textContent = detail.overview || 'Tidak ada deskripsi.';
+        const fullDesc = detail.overview || 'Tidak ada deskripsi.';
+        if (fullDesc.length > 200) {
+          const safeDesc = fullDesc.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          const shortDesc = fullDesc.substring(0, 200) + '... ';
+          modalOverview.innerHTML = `<span>${shortDesc}</span><span style="color:#E50914;cursor:pointer;font-weight:600;" onclick="this.previousElementSibling.innerHTML = '${safeDesc}'; this.remove();"> See more</span>`;
+        } else {
+          modalOverview.textContent = fullDesc;
+        }
+
         modalYear.textContent = year;
         modalRuntime.textContent = runtime;
         modalRating.textContent = `★ ${rating}`;
@@ -2041,6 +1991,7 @@
         // Server buttons
         const serverWrap = document.createElement('div');
         serverWrap.className = 'server-wrap';
+        serverWrap.style.display = 'flex';
         serverWrap.innerHTML = '<span class="server-label">Server:</span>';
         STREAMING_SERVERS.forEach((srv, i) => {
           const btn = document.createElement('button');
@@ -2415,19 +2366,57 @@
     });
 
     // ============================================================
+    // MAIN SEARCH EVENT LISTENERS
+    // ============================================================
+    const mainSearchInput = document.getElementById('main-search-input');
+    const mainSearchBtn = document.getElementById('main-search-btn');
+
+    if (mainSearchBtn) {
+      mainSearchBtn.addEventListener('click', () => {
+        doSearch(mainSearchInput.value.trim());
+      });
+    }
+
+    if (mainSearchInput) {
+      mainSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          doSearch(e.target.value.trim());
+        }
+      });
+    }
+
+    document.querySelectorAll('.genre-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.genre-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const g = btn.dataset.genre;
+        if (g === 'all') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          const el = document.getElementById('section-' + g);
+          if (el) {
+            const y = el.getBoundingClientRect().top + window.scrollY - 80;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+          }
+        }
+      });
+    });
+
+    // ============================================================
     // INIT
     // ============================================================
     (async () => {
       // Pre-render skeletons
       ['row-trending', 'row-movies', 'row-series', 'row-toprated',
-        'row-action', 'row-horror', 'row-comedy', 'row-scifi', 'row-anime'].forEach(id => {
+        'row-action', 'row-horror', 'row-comedy', 'row-scifi', 'row-anime',
+        'row-drama', 'row-romance', 'row-thriller'].forEach(id => {
           const row = document.getElementById(id);
           if (row) {
             render10Skeletons(row);
           }
         });
 
-      await Promise.all([loadHero(), loadAllRows()]);
+      await loadAllRows();
     })();
 
     function render10Skeletons(row) {
