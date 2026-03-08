@@ -41,7 +41,7 @@
       --radius-md: 12px;
       --radius-lg: 20px;
       --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.6);
-      --shadow-glow: 0 0 20px rgba(57, 255, 20, 0.25);
+      --shadow-glow: 0 0 20px rgba(229, 9, 20, 0.25);
     }
 
     html {
@@ -112,7 +112,7 @@
     .logo-icon {
       width: 36px;
       height: 36px;
-      filter: drop-shadow(0 0 8px rgba(57, 255, 20, 0.5));
+      filter: drop-shadow(0 0 8px rgba(229, 9, 20, 0.5));
     }
 
     .logo-text {
@@ -341,7 +341,7 @@
     .btn-play:hover {
       background: #b80710;
       transform: translateY(-2px);
-      box-shadow: 0 0 30px rgba(57, 255, 20, 0.45);
+      box-shadow: 0 0 30px rgba(229, 9, 20, 0.45);
     }
 
     .btn-info {
@@ -688,7 +688,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(57, 255, 20, 0.9);
+      background: rgba(229, 9, 20, 0.9);
       border: none;
       border-radius: 50%;
       width: 72px;
@@ -706,7 +706,7 @@
     .player-play-big:hover {
       background: #E50914;
       transform: translate(-50%, -50%) scale(1.1);
-      box-shadow: 0 0 40px rgba(57, 255, 20, 0.6);
+      box-shadow: 0 0 40px rgba(229, 9, 20, 0.6);
     }
 
     .youtube-container {
@@ -815,7 +815,7 @@
     .server-btn:hover {
       border-color: #E50914;
       color: #E50914;
-      background: rgba(57, 255, 20, 0.08);
+      background: rgba(229, 9, 20, 0.08);
     }
 
     .server-btn.active {
@@ -847,7 +847,7 @@
     .btn-watch:hover {
       background: #b80710;
       transform: translateY(-2px);
-      box-shadow: 0 0 30px rgba(57, 255, 20, 0.5);
+      box-shadow: 0 0 30px rgba(229, 9, 20, 0.5);
     }
 
     /* ========== EPISODE SELECTOR ========== */
@@ -858,8 +858,8 @@
       flex-wrap: wrap;
       margin-bottom: 20px;
       padding: 14px 20px;
-      background: rgba(57, 255, 20, 0.05);
-      border: 1px solid rgba(57, 255, 20, 0.2);
+      background: rgba(229, 9, 20, 0.05);
+      border: 1px solid rgba(229, 9, 20, 0.2);
       border-radius: var(--radius-md);
     }
 
@@ -923,7 +923,7 @@
     }
 
     .modal-type {
-      background: rgba(57, 255, 20, 0.15);
+      background: rgba(229, 9, 20, 0.15);
       color: #E50914;
       font-size: 11px;
       font-weight: 700;
@@ -968,7 +968,7 @@
     .genre-pill:hover {
       border-color: #E50914;
       color: #E50914;
-      background: rgba(57, 255, 20, 0.08);
+      background: rgba(229, 9, 20, 0.08);
     }
 
     .modal-actions {
@@ -1280,7 +1280,71 @@
       font-size: 12px;
       color: #aaa;
     }
-  </style>
+  .search-suggestions {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 300px;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 8px;
+  margin-top: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  display: none;
+  flex-direction: column;
+  z-index: 1000;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.search-suggestions.active {
+  display: flex;
+}
+.sugg-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #222;
+  transition: background 0.2s;
+}
+.sugg-item:hover {
+  background: rgba(229, 9, 20, 0.1);
+}
+.sugg-item:last-child {
+  border-bottom: none;
+}
+.sugg-img {
+  width: 40px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.sugg-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.sugg-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.sugg-meta {
+  font-size: 11px;
+  color: #aaa;
+}
+@media (max-width: 768px) {
+  .logo-text { font-size: 20px !important; }
+  .search-wrap.open .search-input { width: 140px; }
+  .search-suggestions { width: 240px; }
+}
+@media (max-width: 480px) {
+  .logo-text { font-size: 18px !important; }
+  .search-wrap.open .search-input { width: 120px; font-size: 12px; }
+  .search-suggestions { width: 220px; }
+}
+</style>
 </head>
 
 <body>
