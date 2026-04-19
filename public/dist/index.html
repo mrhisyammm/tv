@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Hisyam TV — Watch your favorite movies and series. Free unlimited streaming.">
+  <meta name="theme-color" content="#141414">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta property="og:title" content="Hisyam TV — Stream Anything">
+  <meta property="og:description" content="Watch your favorite movies and series. Free unlimited streaming.">
+  <meta property="og:type" content="website">
+  <title>Hisyam TV — Stream Anything</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <script type="module" crossorigin src="/assets/index-duw5gBoa.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DMO6lDtF.css">
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-left">
+      <a href="#" class="logo" id="logo-home">
+        <span class="logo-text">
+          <span class="logo-text__hi">HI</span><span class="logo-text__syam">SYAM</span>
+        </span>
+        <span class="logo-badge">TV</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#" class="nav-link active" data-section="home">Home</a></li>
+        <li><a href="#" class="nav-link" data-section="movies">Movies</a></li>
+        <li><a href="#" class="nav-link" data-section="series">Series</a></li>
+        <li><a href="#" class="nav-link" data-section="trending">Trending</a></li>
+        <li>
+          <a href="#" class="nav-link" data-section="mylist">
+            My List
+            <span class="nav-link__badge" id="wl-badge">0</span>
+          </a>
+        </li>
+      </ul>
+      <!-- Mobile menu button -->
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+    </div>
+    <div class="nav-right">
+      <div class="search-wrap" id="search-wrap">
+        <button class="search-toggle" id="search-toggle" aria-label="Search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+        </button>
+        <input type="text" class="search-input" id="search-input" placeholder="Search movies, series, anime..."
+          autocomplete="off">
+        <div id="search-suggestions"></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Mobile Nav -->
+  <div class="mobile-nav" id="mobile-nav">
+    <a href="#" class="nav-link active" data-section="home">Home</a>
+    <a href="#" class="nav-link" data-section="movies">Movies</a>
+    <a href="#" class="nav-link" data-section="series">Series</a>
+    <a href="#" class="nav-link" data-section="trending">Trending</a>
+    <a href="#" class="nav-link" data-section="mylist">My List</a>
+  </div>
+
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="hero-backdrop" id="hero-backdrop"></div>
+    <div class="hero-gradient"></div>
+    <div class="hero-content">
+      <div class="hero-meta">
+        <span class="hero-badge" id="hero-type">MOVIE</span>
+        <span class="hero-year" id="hero-year">2024</span>
+        <span class="hero-rating" id="hero-rating">★ 8.5</span>
+      </div>
+      <h1 class="hero-title" id="hero-title">Loading...</h1>
+      <p class="hero-overview" id="hero-overview"></p>
+      <div class="hero-actions">
+        <button class="btn-play" id="hero-play-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+          Watch Now
+        </button>
+        <button class="btn-info" id="hero-info-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          More Info
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN CONTENT -->
+  <main class="main" id="main-content">
+
+    <!-- Search Results (hidden by default) -->
+    <section class="content-section search-section" id="search-results-section" style="display:none">
+      <h2 class="section-title">Search Results</h2>
+      <div class="card-grid" id="search-results-grid"></div>
+    </section>
+
+    <!-- Trending Now -->
+    <section class="content-section" id="section-trending">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">🔥</span> Trending Now</h2>
+      </div>
+      <div class="card-row" id="row-trending"></div>
+    </section>
+
+    <!-- Popular Movies -->
+    <section class="content-section" id="section-movies">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">🎬</span> Popular Movies</h2>
+        <a href="#" class="see-all" data-type="movie" data-filter="popular">See All</a>
+      </div>
+      <div class="card-row" id="row-movies"></div>
+    </section>
+
+    <!-- Popular Series -->
+    <section class="content-section" id="section-series">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">📺</span> Popular Series</h2>
+        <a href="#" class="see-all" data-type="tv" data-filter="popular">See All</a>
+      </div>
+      <div class="card-row" id="row-series"></div>
+    </section>
+
+    <!-- Top Rated -->
+    <section class="content-section" id="section-toprated">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">⭐</span> Top Rated</h2>
+        <a href="#" class="see-all" data-type="movie" data-filter="top_rated">See All</a>
+      </div>
+      <div class="card-row" id="row-toprated"></div>
+    </section>
+
+    <!-- Action -->
+    <section class="content-section" id="section-action">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">⚔️</span> Action</h2>
+      </div>
+      <div class="card-row" id="row-action"></div>
+    </section>
+
+    <!-- Horror -->
+    <section class="content-section" id="section-horror">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">👻</span> Horror</h2>
+      </div>
+      <div class="card-row" id="row-horror"></div>
+    </section>
+
+    <!-- Comedy -->
+    <section class="content-section" id="section-comedy">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">😆</span> Comedy</h2>
+      </div>
+      <div class="card-row" id="row-comedy"></div>
+    </section>
+
+    <!-- Sci-Fi -->
+    <section class="content-section" id="section-scifi">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">🚀</span> Sci-Fi</h2>
+      </div>
+      <div class="card-row" id="row-scifi"></div>
+    </section>
+
+    <!-- Anime -->
+    <section class="content-section" id="section-anime">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">🌸</span> Anime</h2>
+      </div>
+      <div class="card-row" id="row-anime"></div>
+    </section>
+
+    <!-- Drama -->
+    <section class="content-section" id="section-drama">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">🎭</span> Drama</h2>
+      </div>
+      <div class="card-row" id="row-drama"></div>
+    </section>
+
+    <!-- Romance -->
+    <section class="content-section" id="section-romance">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">💖</span> Romance</h2>
+      </div>
+      <div class="card-row" id="row-romance"></div>
+    </section>
+
+    <!-- Thriller -->
+    <section class="content-section" id="section-thriller">
+      <div class="section-header">
+        <h2 class="section-title"><span class="section-icon">🔪</span> Thriller</h2>
+      </div>
+      <div class="card-row" id="row-thriller"></div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-logo">
+      <span class="logo-text" style="color: #E50914; font-size: 28px; font-weight: 800; letter-spacing: -1px; text-transform: uppercase;">Hisyam TV</span>
+    </div>
+    <p class="footer-text">
+      Movie data from <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDb</a>.
+      Built for entertainment purposes.
+    </p>
+    <div class="footer-links">
+      <a href="#" class="footer-link" id="footer-home">Home</a>
+      <a href="#" class="footer-link" id="footer-movies">Movies</a>
+      <a href="#" class="footer-link" id="footer-series">Series</a>
+    </div>
+  </footer>
+
+  <!-- MODAL: Movie Detail + Player -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal">
+      <button class="modal-close" id="modal-close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+
+      <!-- Player Section -->
+      <div class="player-wrapper" id="player-wrapper">
+        <div class="player-placeholder" id="player-placeholder">
+          <div class="player-poster" id="player-poster"></div>
+          <button class="player-play-big" id="player-play-big">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+          </button>
+          <span class="player-play-label">Play Movie</span>
+        </div>
+        <div class="youtube-container" id="youtube-container" style="display:none">
+          <iframe id="youtube-iframe" src="" frameborder="0" allowfullscreen
+            allow="autoplay; encrypted-media"></iframe>
+          <a id="yt-ext-link" href="#" target="_blank" rel="noopener" class="yt-ext-link">
+            Open in YouTube ↗
+          </a>
+        </div>
+        <div class="stream-container" id="stream-container" style="display:none">
+          <iframe id="stream-iframe" src="" frameborder="0" allowfullscreen
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>
+        </div>
+      </div>
+
+      <!-- Detail Section -->
+      <div class="modal-detail">
+        <div class="modal-meta">
+          <span class="modal-year" id="modal-year"></span>
+          <span class="modal-runtime" id="modal-runtime"></span>
+          <span class="modal-rating" id="modal-rating"></span>
+          <span class="modal-type" id="modal-type"></span>
+        </div>
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-overview" id="modal-overview"></p>
+        <div class="modal-genres" id="modal-genres"></div>
+        <div class="modal-actions">
+          <button class="btn-trailer" id="modal-play-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+            Play Trailer
+          </button>
+        </div>
+
+        <!-- Similar / More Like This -->
+        <div class="modal-similar" id="modal-similar-section">
+          <h3 class="similar-title">Similar</h3>
+          <div class="similar-grid" id="similar-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast" id="toast"></div>
+
+  <!-- BACK TO TOP -->
+  <button class="back-to-top" id="back-to-top" aria-label="Back to top">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="18 15 12 9 6 15" />
+    </svg>
+  </button>
+
+</body>
+
+</html>
