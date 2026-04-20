@@ -726,14 +726,37 @@
         e.stopPropagation();
         var wrap = this.closest('.custom-single-select');
         var toggle = wrap.querySelector('.multi-select-toggle');
+        var val = this.getAttribute('data-value');
         wrap.querySelectorAll('.single-select-option').forEach(function(o) { o.classList.remove('selected'); });
         this.classList.add('selected');
-        toggle.textContent = this.textContent;
-        wrap.setAttribute('data-value', this.getAttribute('data-value'));
+        wrap.setAttribute('data-value', val);
         wrap.classList.remove('open');
+        
+        // Show shuffle icon if Randomize selected on sort
+        if (val === 'random' && wrap.id === 'sort-filter-wrap') {
+          toggle.innerHTML = 'Randomize <span class="shuffle-btn" id="shuffle-reroll" title="Shuffle again"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.6-8.6c.8-1.1 2-1.7 3.3-1.7H20"/><path d="M18 2l4 4-4 4"/><path d="M2 6h1.4c1.3 0 2.5.6 3.3 1.7l6.6 8.6c.8 1.1 2 1.7 3.3 1.7H20"/><path d="M18 14l4 4-4 4"/></svg></span>';
+          bindShuffleBtn();
+        } else {
+          toggle.textContent = this.textContent;
+        }
+        
         applyFilters();
       });
     });
+
+    function bindShuffleBtn() {
+      var btn = document.getElementById('shuffle-reroll');
+      if (btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var sortWrap = document.getElementById('sort-filter-wrap');
+          if (sortWrap) sortWrap.setAttribute('data-value', 'random');
+          applyFilters();
+        });
+      }
+    }
+    // Bind on init if already randomize
+    bindShuffleBtn();
 
     // Multi Select Checkbox (Genres)
     var genreSelect = document.getElementById('genre-multi-select');
@@ -791,9 +814,12 @@
         currentGridState.params.sort_by = 'popularity.desc';
         currentGridState.page = Math.floor(Math.random() * 50) + 1;
         if (sortWrap) {
-          setTimeout(function() { 
-            sortWrap.setAttribute('data-value', 'random-active'); 
-          }, 0);
+          sortWrap.setAttribute('data-value', 'random-active');
+          var sortToggle = sortWrap.querySelector('.multi-select-toggle');
+          if (sortToggle) {
+            sortToggle.innerHTML = 'Randomize <span class="shuffle-btn" id="shuffle-reroll" title="Shuffle again"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.6-8.6c.8-1.1 2-1.7 3.3-1.7H20"/><path d="M18 2l4 4-4 4"/><path d="M2 6h1.4c1.3 0 2.5.6 3.3 1.7l6.6 8.6c.8 1.1 2 1.7 3.3 1.7H20"/><path d="M18 14l4 4-4 4"/></svg></span>';
+            bindShuffleBtn();
+          }
         }
       } else if (s) {
         currentGridState.params.sort_by = s;
