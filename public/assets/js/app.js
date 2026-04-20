@@ -1572,6 +1572,9 @@
       var isOpen = searchWrap.classList.toggle('open');
       if (isOpen) {
         searchInput.focus();
+        // Close hamburger menu if open
+        var mobileNav = document.getElementById('mobile-nav');
+        if (mobileNav) mobileNav.classList.remove('open');
       } else {
         searchInput.value = '';
         suggBox.classList.remove('active');
@@ -1611,44 +1614,100 @@
         suggBox.classList.remove('active');
       }
     });
+
+    initSuggScroll();
   }
 
-  function showSuggestions(query) {
+  var GENRE_NAMES = {
+    28: 'Action', 10759: 'Action', 12: 'Adventure', 16: 'Animation',
+    35: 'Comedy', 80: 'Crime', 99: 'Documentary', 18: 'Drama',
+    10751: 'Family', 14: 'Fantasy', 36: 'History', 27: 'Horror',
+    9648: 'Mystery', 10749: 'Romance', 10766: 'Romance', 878: 'Sci-Fi',
+    10765: 'Sci-Fi', 53: 'Thriller', 10752: 'War', 10768: 'War',
+    37: 'Western', 10762: 'Kids', 10763: 'News', 10764: 'Reality',
+    10767: 'Talk'
+  };
+
+  function getGenreNames(ids) {
+    if (!ids || !ids.length) return '';
+    var names = [];
+    var seen = {};
+    ids.forEach(function(id) {
+      var name = GENRE_NAMES[id];
+      if (name && !seen[name]) {
+        seen[name] = true;
+        names.push(name);
+      }
+    });
+    return names.slice(0, 3).join(', ');
+  }
+
+  var suggState = { query: '', page: 1, loading: false, hasMore: true };
+
+  function showSuggestions(query, append) {
     var suggBox = document.getElementById('search-suggestions');
     var searchWrap = document.getElementById('search-wrap');
     var searchInput = document.getElementById('search-input');
 
-    tmdb('/search/multi', { query: query, include_adult: false }, 'en-US').then(function (data) {
-      var filtered = (data.results || [])
-        .filter(function (r) { return (r.media_type === 'movie' || r.media_type === 'tv') && r.poster_path; })
-        .slice(0, 6);
-
+    if (!append) {
+      suggState.query = query;
+      suggState.page = 1;
+      suggState.hasMore = true;
       suggBox.innerHTML = '';
-      if (!filtered.length) {
+    }
+
+    if (suggState.loading || !suggState.hasMore) return;
+    suggState.loading = true;
+
+    tmdb('/search/multi', { query: suggState.query, include_adult: false, page: suggState.page }, 'en-US').then(function (data) {
+      var filtered = (data.results || [])
+        .filter(function (r) { return (r.media_type === 'movie' || r.media_type === 'tv') && r.poster_path; });
+
+      if (!append && !filtered.length) {
         suggBox.innerHTML = '<div style="padding:12px;color:#aaa;font-size:13px;text-align:center;">No matches found</div>';
-      } else {
-        filtered.forEach(function (item) {
-          var type = item.media_type || 'movie';
-          var year = (item.release_date || item.first_air_date || '').substring(0, 4);
-          var title = item.title || item.name;
-          var d = document.createElement('div');
-          d.className = 'sugg-item';
+      }
+
+      filtered.forEach(function (item) {
+        var type = item.media_type || 'movie';
+        var year = (item.release_date || item.first_air_date || '').substring(0, 4);
+        var title = item.title || item.name;
+        var d = document.createElement('div');
+        d.className = 'sugg-item';
+        var genres = getGenreNames(item.genre_ids);
           d.innerHTML =
-            '<img src="' + posterUrl(item.poster_path) + '" class="sugg-img" alt="' + title.replace(/"/g, '&quot;') + '">' +
+          '<img src="' + posterUrl(item.poster_path) + '" class="sugg-img" alt="' + title.replace(/"/g, '&quot;') + '">' +
             '<div class="sugg-info">' +
               '<span class="sugg-title">' + title + '</span>' +
               '<span class="sugg-meta">' + year + ' \u00B7 ' + type.toUpperCase() + ' \u00B7 \u2605 ' + (item.vote_average ? item.vote_average.toFixed(1) : 'N/A') + '</span>' +
+              (genres ? '<span class="sugg-genres">' + genres + '</span>' : '') +
             '</div>';
-          d.onclick = function () {
-            navigate('#' + type + '/' + item.id);
-            suggBox.classList.remove('active');
-            searchInput.value = '';
-            searchWrap.classList.remove('open');
-          };
-          suggBox.appendChild(d);
-        });
+        d.onclick = function () {
+          navigate('#' + type + '/' + item.id);
+          suggBox.classList.remove('active');
+          searchInput.value = '';
+          searchWrap.classList.remove('open');
+        };
+        suggBox.appendChild(d);
+      });
+
+      if (suggState.page >= (data.total_pages || 1)) {
+        suggState.hasMore = false;
+      } else {
+        suggState.page++;
       }
+      suggState.loading = false;
       suggBox.classList.add('active');
+    });
+  }
+
+  // Infinite scroll for search suggestions
+  function initSuggScroll() {
+    var suggBox = document.getElementById('search-suggestions');
+    if (!suggBox) return;
+    suggBox.addEventListener('scroll', function () {
+      if (suggBox.scrollTop + suggBox.clientHeight >= suggBox.scrollHeight - 50) {
+        showSuggestions(suggState.query, true);
+      }
     });
   }
 
@@ -1690,6 +1749,15 @@
     if (mobileToggle && mobileNav) {
       mobileToggle.addEventListener('click', function () {
         mobileNav.classList.toggle('open');
+        // Close search if open
+        var sw = document.getElementById('search-wrap');
+        var si = document.getElementById('search-input');
+        var sb = document.getElementById('search-suggestions');
+        if (sw && sw.classList.contains('open')) {
+          sw.classList.remove('open');
+          if (si) si.value = '';
+          if (sb) sb.classList.remove('active');
+        }
       });
       mobileNav.querySelectorAll('.nav-link').forEach(function (link) {
         link.addEventListener('click', function (e) {
