@@ -18,6 +18,11 @@
 
   var STREAMING_SERVERS = [
     {
+      name: 'VidAPI',
+      movieUrl: function (id) { return 'https://vaplayer.ru/embed/movie/' + id + '?primaryColor=%23E50914'; },
+      tvUrl: function (id, s, e) { return 'https://vaplayer.ru/embed/tv/' + id + '/' + s + '/' + e + '?primaryColor=%23E50914'; },
+    },
+    {
       name: '2embed',
       movieUrl: function (id) { return 'https://www.2embed.cc/embed/' + id; },
       tvUrl: function (id, s, e) { return 'https://www.2embed.cc/embedtv/' + id + '&s=' + s + '&e=' + e; },
@@ -203,8 +208,10 @@
     card.className = 'card';
     card.setAttribute('data-id', item.id);
     card.setAttribute('data-type', type);
+    var typeBadgeLabel = type === 'tv' ? 'TV' : 'Movie';
     card.innerHTML =
       '<img class="card-poster" src="' + posterUrl(item.poster_path) + '" alt="' + title.replace(/"/g, '&quot;') + '" loading="lazy">' +
+      '<span class="card-type-badge card-type-badge--' + type + '">' + typeBadgeLabel + '</span>' +
       '<div class="card-body">' +
         '<div class="card-title">' + title + '</div>' +
         '<div class="card-meta">' +
@@ -348,6 +355,9 @@
       case 'tv':
         showDetailView(route.param, 'tv');
         break;
+      case 'person':
+        showPersonView(route.param);
+        break;
       case 'search':
         showSearchView(decodeURIComponent(route.param));
         break;
@@ -413,7 +423,7 @@
   function updateActiveNav(page) {
     var navPage = page;
     // Detail pages don't highlight any nav
-    if (page === 'movie' || page === 'tv' || page === 'search') navPage = '';
+    if (page === 'movie' || page === 'tv' || page === 'search' || page === 'person') navPage = '';
 
     document.querySelectorAll('.nav-link').forEach(function (l) {
       l.classList.remove('active');
@@ -683,6 +693,19 @@
           '<div class="single-select-option ' + (sortVal === 'random-active' ? 'selected' : '') + '" data-value="random">Randomize</div>' +
         '</div>' +
       '</div>';
+
+      // Year filter — always visible
+      var currentYear = new Date().getFullYear();
+      var yearOptionsHtml = '<div class="single-select-option selected" data-value="">All Years</div>';
+      for (var yr = currentYear; yr >= 1950; yr--) {
+        yearOptionsHtml += '<div class="single-select-option" data-value="' + yr + '">' + yr + '</div>';
+      }
+      filterHtml += '<div class="multi-select custom-single-select" id="year-filter-wrap" data-value="">' +
+        '<div class="multi-select-toggle" id="year-toggle">All Years</div>' +
+        '<div class="multi-select-menu year-menu">' +
+          yearOptionsHtml +
+        '</div>' +
+      '</div>';
     }
 
     container.innerHTML =
@@ -838,6 +861,17 @@
         currentGridState.params['first_air_date.lte'] = today;
         currentGridState.params['vote_count.gte'] = 5;
       }
+
+      // Year filter — applies to all sort modes
+      var yearWrap = document.getElementById('year-filter-wrap');
+      var selectedYear = yearWrap ? yearWrap.getAttribute('data-value') : '';
+      if (selectedYear) {
+        var y = parseInt(selectedYear);
+        currentGridState.params['primary_release_date.gte'] = y + '-01-01';
+        currentGridState.params['primary_release_date.lte'] = y + '-12-31';
+        currentGridState.params['first_air_date.gte'] = y + '-01-01';
+        currentGridState.params['first_air_date.lte'] = y + '-12-31';
+      }
       
       // Update Title
       if (titleEl) {
@@ -854,6 +888,10 @@
         } else {
           newTitle = 'Popular';
         }
+        // Append selected year to title
+        var yrWrap = document.getElementById('year-filter-wrap');
+        var yrVal = yrWrap ? yrWrap.getAttribute('data-value') : '';
+        if (yrVal) newTitle += ' (' + yrVal + ')';
         newTitle += (t === 'tv') ? ' Series' : (t === 'movie' ? ' Movies' : ' Media');
         titleEl.textContent = newTitle;
       }
@@ -1249,6 +1287,10 @@
           '<div class="detail-actions" id="detail-actions"></div>' +
           '<div id="stream-actions-wrap"></div>' +
           '<div id="episode-selector-wrap"></div>' +
+          '<div class="detail-cast" id="detail-cast" style="display:none">' +
+            '<h3 class="cast-title">Cast</h3>' +
+            '<div class="cast-scroll" id="cast-grid"></div>' +
+          '</div>' +
           '<div class="detail-similar" id="detail-similar" style="display:none">' +
             '<h3 class="similar-title">Similar</h3>' +
             '<div class="similar-grid" id="similar-grid"></div>' +
@@ -1305,7 +1347,17 @@
       document.getElementById('detail-rating').textContent = '\u2605 ' + rating;
       document.getElementById('detail-type').textContent = type === 'tv' ? 'SERIES' : 'MOVIE';
 
-      // Genres
+      // Genres — clickable pills that navigate to category
+      var genreNameToRoute = {
+        'Action': 'action', 'Action & Adventure': 'action',
+        'Comedy': 'comedy',
+        'Horror': 'horror', 'Mystery': 'horror',
+        'Science Fiction': 'scifi', 'Sci-Fi & Fantasy': 'scifi',
+        'Animation': 'animation',
+        'Drama': 'drama',
+        'Romance': 'romance',
+        'Thriller': 'thriller', 'Crime': 'thriller'
+      };
       var genresEl = document.getElementById('detail-genres');
       genresEl.innerHTML = '';
       if (detail.genres && detail.genres.length) {
@@ -1313,6 +1365,13 @@
           var pill = document.createElement('span');
           pill.className = 'genre-pill';
           pill.textContent = g.name;
+          var routeKey = genreNameToRoute[g.name];
+          if (routeKey) {
+            pill.classList.add('genre-pill--clickable');
+            pill.addEventListener('click', function () {
+              navigate('#' + routeKey);
+            });
+          }
           genresEl.appendChild(pill);
         });
       }
@@ -1479,6 +1538,33 @@
         };
       }
 
+      // Cast
+      var castSection = document.getElementById('detail-cast');
+      var castGrid = document.getElementById('cast-grid');
+      castGrid.innerHTML = '';
+
+      var credits = detail.credits;
+      if (credits && credits.cast && credits.cast.length) {
+        castSection.style.display = '';
+        credits.cast.slice(0, 20).forEach(function (actor) {
+          var ac = document.createElement('div');
+          ac.className = 'cast-card';
+          var profileImg = actor.profile_path
+            ? IMG_W500 + actor.profile_path
+            : 'https://via.placeholder.com/150x225/111118/333344?text=No+Photo';
+          ac.innerHTML =
+            '<img class="cast-photo" src="' + profileImg + '" alt="' + (actor.name || '').replace(/"/g, '&quot;') + '" loading="lazy">' +
+            '<div class="cast-info">' +
+              '<div class="cast-name">' + (actor.name || '') + '</div>' +
+              '<div class="cast-character">' + (actor.character || '') + '</div>' +
+            '</div>';
+          ac.addEventListener('click', function () {
+            navigate('#person/' + actor.id);
+          });
+          castGrid.appendChild(ac);
+        });
+      }
+
       // Similar
       var similarSection = document.getElementById('detail-similar');
       var similarGridEl = document.getElementById('similar-grid');
@@ -1509,6 +1595,146 @@
   function buildStreamUrl(id, type, season, episode) {
     var srv = STREAMING_SERVERS[activeServer];
     return type === 'tv' ? srv.tvUrl(id, season || 1, episode || 1) : srv.movieUrl(id);
+  }
+
+  // ============================================================
+  // PERSON VIEW — actor page with filmography
+  // ============================================================
+  function showPersonView(personId) {
+    showView('detail-view');
+    var container = document.getElementById('detail-view');
+
+    container.innerHTML =
+      '<div class="person-page">' +
+        '<button class="detail-back-btn" id="person-back">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>' +
+          ' Back' +
+        '</button>' +
+        '<div class="person-header" id="person-header">' +
+          '<div class="person-photo-wrap" id="person-photo-wrap"></div>' +
+          '<div class="person-bio" id="person-bio">' +
+            '<h1 class="person-name" id="person-name">Loading...</h1>' +
+            '<div class="person-meta" id="person-meta"></div>' +
+            '<p class="person-biography" id="person-biography"></p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="person-filmography" id="person-filmography">' +
+          '<h3 class="filmography-title">Known For</h3>' +
+          '<div class="card-grid" id="filmography-grid"></div>' +
+        '</div>' +
+      '</div>';
+
+    document.getElementById('person-back').addEventListener('click', function () {
+      goBack();
+    });
+
+    // Fetch person details + combined credits
+    Promise.all([
+      tmdb('/person/' + personId),
+      tmdb('/person/' + personId + '/combined_credits'),
+    ]).then(function (results) {
+      var person = results[0];
+      var credits = results[1];
+
+      document.title = (person.name || 'Person') + ' \u2014 Hisyam TV';
+
+      // Photo
+      var photoWrap = document.getElementById('person-photo-wrap');
+      var photoSrc = person.profile_path
+        ? IMG_W500 + person.profile_path
+        : 'https://via.placeholder.com/300x450/111118/333344?text=No+Photo';
+      photoWrap.innerHTML = '<img class="person-photo" src="' + photoSrc + '" alt="' + (person.name || '').replace(/"/g, '&quot;') + '">';
+
+      // Name
+      document.getElementById('person-name').textContent = person.name || 'Unknown';
+
+      // Meta
+      var metaEl = document.getElementById('person-meta');
+      var metaParts = [];
+      if (person.known_for_department) metaParts.push(person.known_for_department);
+      if (person.birthday) {
+        var bday = person.birthday;
+        var age = '';
+        if (!person.deathday) {
+          var today = new Date();
+          var birth = new Date(bday);
+          age = Math.floor((today - birth) / (365.25 * 24 * 60 * 60 * 1000));
+          age = ' (age ' + age + ')';
+        }
+        metaParts.push('Born: ' + bday + age);
+      }
+      if (person.deathday) metaParts.push('Died: ' + person.deathday);
+      if (person.place_of_birth) metaParts.push(person.place_of_birth);
+      metaEl.innerHTML = metaParts.map(function (p) {
+        return '<span class="person-meta-item">' + p + '</span>';
+      }).join('');
+
+      // Biography
+      var bioEl = document.getElementById('person-biography');
+      if (person.biography) {
+        // Truncate long bios with expand
+        var bio = person.biography;
+        if (bio.length > 500) {
+          bioEl.innerHTML = '<span class="bio-short">' + bio.substring(0, 500) + '... </span>' +
+            '<span class="bio-full" style="display:none">' + bio + ' </span>' +
+            '<a class="bio-toggle" href="#">Read more</a>';
+          bioEl.querySelector('.bio-toggle').addEventListener('click', function (e) {
+            e.preventDefault();
+            var shortEl = bioEl.querySelector('.bio-short');
+            var fullEl = bioEl.querySelector('.bio-full');
+            var togEl = bioEl.querySelector('.bio-toggle');
+            if (fullEl.style.display === 'none') {
+              shortEl.style.display = 'none';
+              fullEl.style.display = '';
+              togEl.textContent = 'Show less';
+            } else {
+              shortEl.style.display = '';
+              fullEl.style.display = 'none';
+              togEl.textContent = 'Read more';
+            }
+          });
+        } else {
+          bioEl.textContent = bio;
+        }
+      } else {
+        bioEl.textContent = 'No biography available.';
+      }
+
+      // Filmography — sort by popularity, deduplicate
+      var castCredits = (credits.cast || []).filter(function (c) {
+        return (c.media_type === 'movie' || c.media_type === 'tv') && c.poster_path;
+      });
+      var seen = {};
+      var unique = [];
+      castCredits.forEach(function (c) {
+        var key = c.media_type + '_' + c.id;
+        if (!seen[key]) {
+          seen[key] = true;
+          unique.push(c);
+        }
+      });
+      unique.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
+
+      // Update filmography title with count
+      var filmTitle = document.querySelector('.filmography-title');
+      if (filmTitle) {
+        var totalWorks = unique.length;
+        filmTitle.innerHTML = 'Known For <span class="filmography-count">(' + totalWorks + ' work' + (totalWorks !== 1 ? 's' : '') + ')</span>';
+      }
+
+      var filmGrid = document.getElementById('filmography-grid');
+      filmGrid.innerHTML = '';
+      if (unique.length) {
+        unique.forEach(function (item) {
+          filmGrid.appendChild(createCard(item, item.media_type));
+        });
+      } else {
+        filmGrid.innerHTML = '<p style="color:var(--text-muted);padding:20px 0">No filmography available.</p>';
+      }
+    }).catch(function (e) {
+      console.error('Failed to load person:', e);
+      document.getElementById('person-name').textContent = 'Failed to load data.';
+    });
   }
 
   function loadStream(id, type, season, episode) {
@@ -1849,7 +2075,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       var route = parseRoute();
-      if (route.page === 'movie' || route.page === 'tv') {
+      if (route.page === 'movie' || route.page === 'tv' || route.page === 'person') {
         goBack();
       }
     }
@@ -1859,12 +2085,20 @@
   // POPUP BLOCKER — aggressive popup/redirect defense
   // ============================================================
 
-  // 1) Override window.open — blocks most JS-triggered popups
+  // 1) Override window.open — blocks popups but looks native to embed scripts
+  //    (2embed checks if window.open is overridden to detect sandbox)
   var _origOpen = window.open;
-  window.open = function () {
+  var _fakeOpen = function () {
     console.warn('[Popup Blocked] window.open blocked');
     return null;
   };
+  // Spoof toString so embeds see "function open() { [native code] }"
+  _fakeOpen.toString = function () { return 'function open() { [native code] }'; };
+  Object.defineProperty(window, 'open', {
+    get: function () { return _fakeOpen; },
+    set: function () { /* ignore attempts to restore */ },
+    configurable: false
+  });
 
   // 2) Block clicks that try to open new windows via <a target="_blank">
   //    injected by embed scripts into our page (not inside iframe)
@@ -1885,11 +2119,15 @@
   }, true);
 
   // 3) Prevent focus-steal: embeds sometimes blur our window to redirect
+  //    BUT skip re-focus if the user is interacting with an iframe
+  //    (e.g. VidAPI subtitle dropdown, player controls)
   var _lastFocusTime = 0;
   window.addEventListener('blur', function () {
     _lastFocusTime = Date.now();
-    // Re-focus after a short delay if an embed stole focus
     setTimeout(function () {
+      // If an iframe has focus, the user clicked inside it intentionally — don't steal focus
+      var active = document.activeElement;
+      if (active && active.tagName === 'IFRAME') return;
       if (Date.now() - _lastFocusTime < 200) {
         window.focus();
       }

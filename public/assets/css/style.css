@@ -1092,9 +1092,14 @@ body {
   border-radius: 20px;
   transition: all var(--transition-fast);
   cursor: default;
+  text-decoration: none;
 }
 
-.genre-pill:hover {
+.genre-pill--clickable {
+  cursor: pointer;
+}
+
+.genre-pill--clickable:hover {
   border-color: var(--accent);
   color: var(--accent);
   background: rgba(229, 9, 20, 0.08);
@@ -1319,6 +1324,214 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ── Card Type Badge ── */
+.card-type-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #fff;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.card:hover .card-type-badge {
+  opacity: 0;
+}
+
+.card-type-badge--movie {
+  background: rgba(229, 9, 20, 0.85);
+}
+
+.card-type-badge--tv {
+  background: rgba(59, 130, 246, 0.85);
+}
+
+/* ── Cast Section (detail page) ── */
+.detail-cast {
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+}
+
+.cast-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.cast-scroll {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) #111;
+}
+
+.cast-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.cast-scroll::-webkit-scrollbar-track {
+  background: #111;
+}
+
+.cast-scroll::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 2px;
+}
+
+.cast-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+.cast-card {
+  flex: 0 0 110px;
+  width: 110px;
+  scroll-snap-align: start;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-card);
+  transition: transform var(--transition-fast);
+  text-align: center;
+}
+
+.cast-card:hover {
+  transform: scale(1.05);
+}
+
+.cast-photo {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  display: block;
+  background: #1a1a25;
+}
+
+.cast-info {
+  padding: 8px 6px 10px;
+}
+
+.cast-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.cast-character {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Person Page ── */
+.person-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: calc(var(--nav-height) + 24px) 24px 60px;
+}
+
+.person-header {
+  display: flex;
+  gap: 32px;
+  margin-bottom: 40px;
+  align-items: flex-start;
+}
+
+.person-photo-wrap {
+  flex: 0 0 200px;
+  width: 200px;
+}
+
+.person-photo {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  display: block;
+  background: #1a1a25;
+}
+
+.person-bio {
+  flex: 1;
+  min-width: 0;
+}
+
+.person-name {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+}
+
+.person-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.person-meta-item {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.person-meta-item:first-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.person-biography {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.bio-toggle {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.bio-toggle:hover {
+  text-decoration: underline;
+}
+
+.person-filmography {
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.filmography-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.filmography-count {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 /* ── Search Suggestions ── */
@@ -1706,6 +1919,45 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   }
 
+  /* Person page mobile */
+  .person-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: left;
+    gap: 20px;
+  }
+
+  .person-photo-wrap {
+    flex: 0 0 160px;
+    width: 160px;
+  }
+
+  .person-name {
+    font-size: 24px;
+  }
+
+  .person-meta {
+    justify-content: flex-start;
+  }
+
+  .person-page {
+    padding: calc(var(--nav-height) + 16px) 16px 40px;
+  }
+
+  /* Cast mobile */
+  .cast-card {
+    flex: 0 0 95px;
+    width: 95px;
+  }
+
+  .cast-name {
+    font-size: 11px;
+  }
+
+  .cast-character {
+    font-size: 10px;
+  }
+
   .logo-text {
     font-size: 22px;
   }
@@ -1862,6 +2114,30 @@ body {
 .single-select-option.selected {
   color: var(--accent);
   font-weight: 700;
+}
+
+/* Year filter dropdown — taller scroll area */
+.year-menu {
+  max-height: 350px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) #111;
+}
+
+.year-menu::-webkit-scrollbar {
+  width: 5px;
+}
+
+.year-menu::-webkit-scrollbar-track {
+  background: #111;
+}
+
+.year-menu::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
+
+.year-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .mobile-cat-toggle {
