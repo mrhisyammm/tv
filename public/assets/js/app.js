@@ -86,10 +86,13 @@
       });
   }
 
+  // ── Inline SVG placeholders (no external dependency) ──
+  var PLACEHOLDER_POSTER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'%3E%3Crect width='300' height='450' fill='%23181820'/%3E%3Cg transform='translate(150,200)' opacity='0.18'%3E%3Crect x='-30' y='-40' width='60' height='80' rx='6' fill='none' stroke='%23888' stroke-width='3'/%3E%3Ccircle cx='0' cy='-16' r='8' fill='%23888'/%3E%3Cpath d='M-20 20 L-10 6 L0 16 L10 0 L20 20Z' fill='%23888'/%3E%3C/g%3E%3Ctext x='150' y='260' text-anchor='middle' fill='%23555' font-family='sans-serif' font-size='13' font-weight='600'%3ENo Poster%3C/text%3E%3C/svg%3E";
+  var PLACEHOLDER_PERSON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'%3E%3Crect width='300' height='450' fill='%23181820'/%3E%3Cg transform='translate(150,195)' opacity='0.18'%3E%3Ccircle cx='0' cy='-24' r='28' fill='%23888'/%3E%3Cellipse cx='0' cy='32' rx='40' ry='28' fill='%23888'/%3E%3C/g%3E%3Ctext x='150' y='265' text-anchor='middle' fill='%23555' font-family='sans-serif' font-size='13' font-weight='600'%3ENo Photo%3C/text%3E%3C/svg%3E";
+  var PLACEHOLDER_EPISODE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='170' viewBox='0 0 300 170'%3E%3Crect width='300' height='170' fill='%23181820'/%3E%3Cg transform='translate(150,75)' opacity='0.18'%3E%3Cpolygon points='-12,-16 -12,16 16,0' fill='%23888'/%3E%3Crect x='-28' y='-22' width='56' height='44' rx='4' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3C/g%3E%3Ctext x='150' y='120' text-anchor='middle' fill='%23555' font-family='sans-serif' font-size='11' font-weight='600'%3ENo Preview%3C/text%3E%3C/svg%3E";
+
   function posterUrl(path) {
-    return path
-      ? IMG_W500 + path
-      : 'https://via.placeholder.com/300x450/111118/333344?text=No+Poster';
+    return path ? IMG_W500 + path : PLACEHOLDER_POSTER;
   }
 
   function backdropUrl(path) {
@@ -1551,7 +1554,7 @@
           ac.className = 'cast-card';
           var profileImg = actor.profile_path
             ? IMG_W500 + actor.profile_path
-            : 'https://via.placeholder.com/150x225/111118/333344?text=No+Photo';
+            : PLACEHOLDER_PERSON;
           ac.innerHTML =
             '<img class="cast-photo" src="' + profileImg + '" alt="' + (actor.name || '').replace(/"/g, '&quot;') + '" loading="lazy">' +
             '<div class="cast-info">' +
@@ -1642,7 +1645,7 @@
       var photoWrap = document.getElementById('person-photo-wrap');
       var photoSrc = person.profile_path
         ? IMG_W500 + person.profile_path
-        : 'https://via.placeholder.com/300x450/111118/333344?text=No+Photo';
+        : PLACEHOLDER_PERSON;
       photoWrap.innerHTML = '<img class="person-photo" src="' + photoSrc + '" alt="' + (person.name || '').replace(/"/g, '&quot;') + '">';
 
       // Name
@@ -1797,7 +1800,7 @@
       };
       var imgUrl = ep.still_path
         ? IMG_W500 + ep.still_path
-        : 'https://via.placeholder.com/300x170/111118/333344?text=No+Image';
+        : PLACEHOLDER_EPISODE;
       var synopsis = ep.overview || 'No synopsis available.';
       epCard.innerHTML =
         '<img class="ep-card__img" src="' + imgUrl + '" alt="Episode ' + ep.episode_number + '">' +
