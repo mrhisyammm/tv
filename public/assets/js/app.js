@@ -10,7 +10,8 @@
   // ============================================================
   // CONFIG
   // ============================================================
-  var PROXY_BASE = '/api/tmdb';
+  var TMDB_API_KEY = '8265bd1679663a7ea12ac168da84d2e8';
+  var TMDB_BASE = 'https://api.themoviedb.org/3';
   var IMG_BASE = 'https://image.tmdb.org/t/p';
   var IMG_W500 = IMG_BASE + '/w500';
   var IMG_W1280 = IMG_BASE + '/w1280';
@@ -68,17 +69,19 @@
   function tmdb(path, params, lang) {
     params = params || {};
     lang = lang || 'en-US';
-    var url = new URL(PROXY_BASE, window.location.origin);
-    url.searchParams.set('path', path);
+    var url = new URL(TMDB_BASE + path);
+    url.searchParams.set('api_key', TMDB_API_KEY);
     url.searchParams.set('language', lang);
     Object.keys(params).forEach(function (k) {
       url.searchParams.set(k, params[k]);
     });
     return fetch(url.toString())
-      .then(function (res) { return res.json(); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+      })
       .catch(function (e) {
         console.warn('[TMDB] fetch error', path, e.message);
-        showToast('\u274C Network error. Check your connection.', 4000);
         return { results: [] };
       });
   }
