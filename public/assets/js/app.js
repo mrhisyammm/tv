@@ -10,7 +10,7 @@
   // ============================================================
   // CONFIG
   // ============================================================
-  var TMDB_API_KEY = '3e232180151a04086bb5b9998d8435bf';
+  var TMDB_API_KEY = '8265bd1679663a7ea12ac168da84d2e8';
   var TMDB_BASE = 'https://api.themoviedb.org/3';
   var IMG_BASE = 'https://image.tmdb.org/t/p';
   var IMG_W500 = IMG_BASE + '/w500';
