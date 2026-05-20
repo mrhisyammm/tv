@@ -527,8 +527,23 @@
     });
   }
 
+  function fetchPopularMixed() {
+    var pMovie = tmdb('/movie/popular');
+    var pTv = tmdb('/tv/popular');
+    return Promise.all([pMovie, pTv]).then(function(responses) {
+      var movies = responses[0].results || [];
+      var tvs = responses[1].results || [];
+      movies.forEach(function(m) { m.media_type = 'movie'; });
+      tvs.forEach(function(t) { t.media_type = 'tv'; });
+      var combined = movies.concat(tvs);
+      // Sort by popularity to interleave them naturally
+      combined.sort(function(a, b) { return (b.popularity || 0) - (a.popularity || 0); });
+      return { results: combined };
+    });
+  }
+
   var ROW_CONFIG = [
-    { id: 'row-trending',  fetch: function () { return tmdb('/trending/all/week'); },                                   type: null    },
+    { id: 'row-trending',  fetch: fetchPopularMixed,                                                     type: null    },
     { id: 'row-newest',    fetch: function () { return tmdb('/movie/now_playing'); },                                    type: 'movie' },
     { id: 'row-movies',    fetch: function () { return tmdb('/movie/popular'); },                                        type: 'movie' },
     { id: 'row-series',    fetch: function () { return tmdb('/tv/popular'); },                                           type: 'tv'    },
@@ -610,7 +625,7 @@
     var heroYear = document.getElementById('hero-year');
     var heroType = document.getElementById('hero-type');
 
-    tmdb('/trending/all/week').then(function (data) {
+    fetchPopularMixed().then(function (data) {
       if (!data.results || !data.results.length) return;
 
       var item = data.results[Math.floor(Math.random() * Math.min(10, data.results.length))];
