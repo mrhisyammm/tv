@@ -76,25 +76,33 @@
     Object.keys(params).forEach(function (k) {
       url.searchParams.set(k, params[k]);
     });
-    return fetch(url.toString())
-      .then(function (res) {
-        if (res.status === 429 && retries > 0) {
-          // Exponential backoff with jitter
-          var delay = Math.pow(2, 4 - retries) * 300 + Math.random() * 200;
-          console.warn('[TMDB] Rate limited (429). Retrying in ' + Math.round(delay) + 'ms...', path);
-          return new Promise(function(resolve) {
-            setTimeout(function() {
-              resolve(tmdb(path, params, lang, retries - 1));
-            }, delay);
-          });
-        }
-        if (!res.ok) throw new Error(res.statusText);
-        return res.json();
-      })
-      .catch(function (e) {
-        console.warn('[TMDB] fetch error', path, e.message);
-        return { results: [] };
-      });
+    function attemptFetch(retriesLeft) {
+      return fetch(url.toString())
+        .then(function (res) {
+          if ((res.status === 429 || res.status >= 500) && retriesLeft > 0) {
+            var delay = Math.pow(2, 4 - retriesLeft) * 300 + Math.random() * 200;
+            console.warn('[TMDB] Server error/Rate limit (' + res.status + '). Retrying in ' + Math.round(delay) + 'ms...', path);
+            return new Promise(function(resolve) {
+              setTimeout(function() { resolve(attemptFetch(retriesLeft - 1)); }, delay);
+            });
+          }
+          if (!res.ok) throw new Error(res.statusText || 'Status ' + res.status);
+          return res.json();
+        })
+        .catch(function (e) {
+          if (retriesLeft > 0) {
+            var delay = Math.pow(2, 4 - retriesLeft) * 300 + Math.random() * 200;
+            console.warn('[TMDB] Network error. Retrying in ' + Math.round(delay) + 'ms...', path, e.message);
+            return new Promise(function(resolve) {
+              setTimeout(function() { resolve(attemptFetch(retriesLeft - 1)); }, delay);
+            });
+          }
+          console.warn('[TMDB] Final fetch error', path, e.message);
+          return { results: [] };
+        });
+    }
+
+    return attemptFetch(retries);
   }
 
   // ── Inline SVG placeholders (no external dependency) ──
