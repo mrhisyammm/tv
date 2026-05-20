@@ -66,43 +66,24 @@
   // ============================================================
   // API helpers
   // ============================================================
-  function tmdb(path, params, lang, retries) {
+  function tmdb(path, params, lang) {
     params = params || {};
     lang = lang || 'en-US';
-    retries = retries !== undefined ? retries : 4; // Max 4 retries for rate limits
     var url = new URL(TMDB_BASE + path);
     url.searchParams.set('api_key', TMDB_API_KEY);
     url.searchParams.set('language', lang);
     Object.keys(params).forEach(function (k) {
       url.searchParams.set(k, params[k]);
     });
-    function attemptFetch(retriesLeft) {
-      return fetch(url.toString())
-        .then(function (res) {
-          if ((res.status === 429 || res.status >= 500) && retriesLeft > 0) {
-            var delay = Math.pow(2, 4 - retriesLeft) * 300 + Math.random() * 200;
-            console.warn('[TMDB] Server error/Rate limit (' + res.status + '). Retrying in ' + Math.round(delay) + 'ms...', path);
-            return new Promise(function(resolve) {
-              setTimeout(function() { resolve(attemptFetch(retriesLeft - 1)); }, delay);
-            });
-          }
-          if (!res.ok) throw new Error(res.statusText || 'Status ' + res.status);
-          return res.json();
-        })
-        .catch(function (e) {
-          if (retriesLeft > 0) {
-            var delay = Math.pow(2, 4 - retriesLeft) * 300 + Math.random() * 200;
-            console.warn('[TMDB] Network error. Retrying in ' + Math.round(delay) + 'ms...', path, e.message);
-            return new Promise(function(resolve) {
-              setTimeout(function() { resolve(attemptFetch(retriesLeft - 1)); }, delay);
-            });
-          }
-          console.warn('[TMDB] Final fetch error', path, e.message);
-          return { results: [] };
-        });
-    }
-
-    return attemptFetch(retries);
+    return fetch(url.toString())
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+      })
+      .catch(function (e) {
+        console.warn('[TMDB] fetch error', path, e.message);
+        return { results: [] };
+      });
   }
 
   // ── Inline SVG placeholders (no external dependency) ──
@@ -527,23 +508,8 @@
     });
   }
 
-  function fetchPopularMixed() {
-    var pMovie = tmdb('/movie/popular');
-    var pTv = tmdb('/tv/popular');
-    return Promise.all([pMovie, pTv]).then(function(responses) {
-      var movies = responses[0].results || [];
-      var tvs = responses[1].results || [];
-      movies.forEach(function(m) { m.media_type = 'movie'; });
-      tvs.forEach(function(t) { t.media_type = 'tv'; });
-      var combined = movies.concat(tvs);
-      // Sort by popularity to interleave them naturally
-      combined.sort(function(a, b) { return (b.popularity || 0) - (a.popularity || 0); });
-      return { results: combined };
-    });
-  }
-
   var ROW_CONFIG = [
-    { id: 'row-trending',  fetch: fetchPopularMixed,                                                     type: null    },
+    { id: 'row-trending',  fetch: function () { return tmdb('/trending/all/week'); },                                   type: null    },
     { id: 'row-newest',    fetch: function () { return tmdb('/movie/now_playing'); },                                    type: 'movie' },
     { id: 'row-movies',    fetch: function () { return tmdb('/movie/popular'); },                                        type: 'movie' },
     { id: 'row-series',    fetch: function () { return tmdb('/tv/popular'); },                                           type: 'tv'    },
@@ -625,7 +591,7 @@
     var heroYear = document.getElementById('hero-year');
     var heroType = document.getElementById('hero-type');
 
-    fetchPopularMixed().then(function (data) {
+    tmdb('/trending/all/week').then(function (data) {
       if (!data.results || !data.results.length) return;
 
       var item = data.results[Math.floor(Math.random() * Math.min(10, data.results.length))];
