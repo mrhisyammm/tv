@@ -66,9 +66,10 @@
   // ============================================================
   // API helpers
   // ============================================================
-  function tmdb(path, params, lang) {
+  function tmdb(path, params, lang, retries) {
     params = params || {};
     lang = lang || 'en-US';
+    retries = retries !== undefined ? retries : 4; // Max 4 retries for rate limits
     var url = new URL(TMDB_BASE + path);
     url.searchParams.set('api_key', TMDB_API_KEY);
     url.searchParams.set('language', lang);
@@ -77,6 +78,16 @@
     });
     return fetch(url.toString())
       .then(function (res) {
+        if (res.status === 429 && retries > 0) {
+          // Exponential backoff with jitter
+          var delay = Math.pow(2, 4 - retries) * 300 + Math.random() * 200;
+          console.warn('[TMDB] Rate limited (429). Retrying in ' + Math.round(delay) + 'ms...', path);
+          return new Promise(function(resolve) {
+            setTimeout(function() {
+              resolve(tmdb(path, params, lang, retries - 1));
+            }, delay);
+          });
+        }
         if (!res.ok) throw new Error(res.statusText);
         return res.json();
       })
