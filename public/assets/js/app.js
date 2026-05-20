@@ -66,24 +66,55 @@
   // ============================================================
   // API helpers
   // ============================================================
-  function tmdb(path, params, lang) {
+  // ── Simple rate limiter: minimum 250ms between requests ──
+  var _pendingRequest = Promise.resolve();
+  function rateLimit() {
+    var p = _pendingRequest.then(function () {
+      return new Promise(function (resolve) { setTimeout(resolve, 250); });
+    });
+    _pendingRequest = p;
+    return p;
+  }
+
+  function tmdb(path, params, lang, retries) {
     params = params || {};
     lang = lang || 'en-US';
+    retries = retries || 0;
     var url = new URL(TMDB_BASE + path);
     url.searchParams.set('api_key', TMDB_API_KEY);
     url.searchParams.set('language', lang);
     Object.keys(params).forEach(function (k) {
       url.searchParams.set(k, params[k]);
     });
-    return fetch(url.toString())
-      .then(function (res) {
-        if (!res.ok) throw new Error(res.statusText);
+    return rateLimit().then(function () {
+      return fetch(url.toString()).then(function (res) {
+        if (res.status === 429) {
+          var retryAfter = parseInt(res.headers.get('Retry-After') || '5', 10);
+          if (retryAfter > 60) retryAfter = 60;
+          showToast('\u26A0\uFE0F Rate limited. Waiting ' + retryAfter + 's...', 4000);
+          console.warn('[TMDB] 429 Rate Limited on', path, 'retry-after:', retryAfter);
+          if (retries < 2) {
+            return new Promise(function (resolve) {
+              setTimeout(function () {
+                resolve(tmdb(path, params, lang, retries + 1));
+              }, retryAfter * 1000);
+            });
+          }
+          throw new Error('Rate limit exceeded after retries');
+        }
+        if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
         return res.json();
-      })
-      .catch(function (e) {
-        console.warn('[TMDB] fetch error', path, e.message);
-        return { results: [] };
       });
+    }).catch(function (e) {
+      if (e.message.indexOf('Rate limit') === 0) {
+        showToast('\u274C API limit reached. Please wait & refresh.', 5000);
+      } else if (e.message.indexOf('Failed to fetch') !== -1 || e.message.indexOf('NetworkError') !== -1) {
+        showToast('\u274C Network error. Check your connection.', 4000);
+      } else {
+        console.warn('[TMDB] fetch error', path, e.message);
+      }
+      return { results: [] };
+    });
   }
 
   // ── Inline SVG placeholders (no external dependency) ──
