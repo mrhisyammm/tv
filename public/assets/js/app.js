@@ -21,31 +21,37 @@
       name: 'VidAPI',
       movieUrl: function (id) { return 'https://vaplayer.ru/embed/movie/' + id + '?primaryColor=%23E50914'; },
       tvUrl: function (id, s, e) { return 'https://vaplayer.ru/embed/tv/' + id + '/' + s + '/' + e + '?primaryColor=%23E50914'; },
+      useSandbox: true
     },
     {
       name: '2embed',
       movieUrl: function (id) { return 'https://www.2embed.cc/embed/' + id; },
       tvUrl: function (id, s, e) { return 'https://www.2embed.cc/embedtv/' + id + '&s=' + s + '&e=' + e; },
+      useSandbox: false // 2embed detects sandbox and blocks playback
     },
     {
       name: 'VidSrc',
       movieUrl: function (id) { return 'https://vidsrc.to/embed/movie/' + id; },
       tvUrl: function (id, s, e) { return 'https://vidsrc.to/embed/tv/' + id + '/' + s + '/' + e; },
+      useSandbox: true
     },
     {
       name: 'VidSrc Pro',
       movieUrl: function (id) { return 'https://vidsrc.pro/embed/movie/' + id; },
       tvUrl: function (id, s, e) { return 'https://vidsrc.pro/embed/tv/' + id + '/' + s + '/' + e; },
+      useSandbox: true
     },
     {
       name: 'Smashy',
       movieUrl: function (id) { return 'https://embed.smashystream.com/playere.php?tmdb=' + id; },
       tvUrl: function (id, s, e) { return 'https://embed.smashystream.com/playere.php?tmdb=' + id + '&season=' + s + '&episode=' + e; },
+      useSandbox: true
     },
     {
       name: 'Embed.su',
       movieUrl: function (id) { return 'https://embed.su/embed/movie/' + id; },
       tvUrl: function (id, s, e) { return 'https://embed.su/embed/tv/' + id + '/' + s + '/' + e; },
+      useSandbox: true
     },
   ];
 
@@ -1852,7 +1858,16 @@
     if (ytContainer) ytContainer.style.display = 'none';
     if (placeholder) placeholder.style.display = 'none';
     if (streamContainer) streamContainer.style.display = 'block';
-    if (streamIframe) streamIframe.src = buildStreamUrl(id, type, season, episode);
+
+    if (streamIframe) {
+      var srv = STREAMING_SERVERS[activeServer];
+      if (srv && srv.useSandbox === false) {
+        streamIframe.removeAttribute('sandbox');
+      } else {
+        streamIframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms');
+      }
+      streamIframe.src = buildStreamUrl(id, type, season, episode);
+    }
   }
 
   function switchServer(idx, id, type) {
@@ -1863,6 +1878,12 @@
     if (currentStream) {
       var streamIframe = document.getElementById('stream-iframe');
       if (streamIframe) {
+        var srv = STREAMING_SERVERS[idx];
+        if (srv && srv.useSandbox === false) {
+          streamIframe.removeAttribute('sandbox');
+        } else {
+          streamIframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms');
+        }
         streamIframe.src = buildStreamUrl(currentStream.id, currentStream.type, currentStream.season, currentStream.episode);
       }
       showToast('Switched to ' + STREAMING_SERVERS[idx].name);
