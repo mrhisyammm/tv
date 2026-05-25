@@ -509,6 +509,7 @@
   }
 
   var ROW_CONFIG = [
+    { id: 'row-history',   fetch: function () { return Promise.resolve({ results: getList(HISTORY_KEY) }); },           type: null    },
     { id: 'row-trending',  fetch: function () { return tmdb('/trending/all/week'); },                                   type: null    },
     { id: 'row-newest',    fetch: function () { return tmdb('/movie/now_playing'); },                                    type: 'movie' },
     { id: 'row-movies',    fetch: function () { return tmdb('/movie/popular'); },                                        type: 'movie' },
@@ -529,19 +530,41 @@
   function showHomeView() {
     showView('home-view');
 
+    // Force refresh history row when visiting homepage
+    if (loadedRows['row-history']) {
+      delete loadedRows['row-history'];
+    }
+    var histCfg = ROW_CONFIG.find(function (cfg) { return cfg.id === 'row-history'; });
+    if (histCfg) loadRow(histCfg);
+
     if (!heroLoaded) {
       heroLoaded = true;
       loadHero();
-      // Show skeletons for all rows
-      ROW_CONFIG.forEach(function (cfg) { renderSkeletonsInRow(cfg.id); });
+      // Show skeletons for all rows except history
+      ROW_CONFIG.forEach(function (cfg) {
+        if (cfg.id !== 'row-history') {
+          renderSkeletonsInRow(cfg.id);
+        }
+      });
       setupLazyRows();
     }
   }
 
   function loadRow(cfg) {
+    if (!cfg) return;
     if (loadedRows[cfg.id]) return;
     loadedRows[cfg.id] = true;
     cfg.fetch().then(function (data) {
+      if (cfg.id === 'row-history') {
+        var sec = document.getElementById('section-history');
+        if (sec) {
+          if (data.results && data.results.length > 0) {
+            sec.style.display = 'block';
+          } else {
+            sec.style.display = 'none';
+          }
+        }
+      }
       renderRow(cfg.id, data.results, cfg.type);
     });
   }
@@ -925,28 +948,30 @@
     
     var typesToFetch = currentGridState.mediaType ? [currentGridState.mediaType] : ['movie', 'tv'];
     
+    var hasSpecificEndpoint = currentGridState.endpoint && currentGridState.endpoint !== '/discover/';
+
     var promises = typesToFetch.map(function(type) {
       var fetchParams = Object.assign({ page: currentGridState.page }, currentGridState.params);
-      var endp = '/discover/' + type;
+      var endp;
 
-      // Fallback to trending if absolutely no filters applied on Any Type
-      if (!currentGridState.mediaType && (!currentGridState.activeGenres || !currentGridState.activeGenres.length) && !currentGridState.params.sort_by) {
-        endp = '/trending/' + type + '/week';
-      }
+      if (hasSpecificEndpoint) {
+        endp = currentGridState.endpoint;
+      } else {
+        endp = '/discover/' + type;
 
-      // Translate active genres
-      if (currentGridState.activeGenres && currentGridState.activeGenres.length > 0) {
-        var translatedIds = currentGridState.activeGenres.map(function(k) { return GENRES[k][type]; }).filter(Boolean);
-        if (translatedIds.length > 0) {
-          fetchParams.with_genres = translatedIds.join(',');
-        } else {
-          // If a genre doesn't exist for this type at all (e.g. no mapping), we can simulate empty results
-          return Promise.resolve({ results: [], total_pages: 0, type: type });
+        // Translate active genres
+        if (currentGridState.activeGenres && currentGridState.activeGenres.length > 0) {
+          var translatedIds = currentGridState.activeGenres.map(function(k) { return GENRES[k][type]; }).filter(Boolean);
+          if (translatedIds.length > 0) {
+            fetchParams.with_genres = translatedIds.join(',');
+          } else {
+            return Promise.resolve({ results: [], total_pages: 0, type: type });
+          }
         }
-      }
 
-      if (type === 'tv' && fetchParams.sort_by === 'primary_release_date.desc') {
-        fetchParams.sort_by = 'first_air_date.desc';
+        if (type === 'tv' && fetchParams.sort_by === 'primary_release_date.desc') {
+          fetchParams.sort_by = 'first_air_date.desc';
+        }
       }
 
       return tmdb(endp, fetchParams).then(function(data) {
@@ -1273,7 +1298,7 @@
             '<a id="yt-ext-link" href="#" target="_blank" rel="noopener" class="yt-ext-link">Open in YouTube \u2197</a>' +
           '</div>' +
           '<div class="stream-container" id="stream-container" style="display:none">' +
-            '<iframe id="stream-iframe" src="" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>' +
+            '<iframe id="stream-iframe" src="" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"></iframe>' +
           '</div>' +
         '</div>' +
         // Info
@@ -1341,6 +1366,30 @@
 
       // Update document title
       document.title = title + ' \u2014 Hisyam TV';
+
+      // Update meta tags for SEO/social previews
+      try {
+        var metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) metaDesc.setAttribute('content', detail.overview || 'Watch ' + title + ' on Hisyam TV.');
+        
+        var ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) ogTitle.setAttribute('content', title + ' — Hisyam TV');
+        
+        var ogDesc = document.querySelector('meta[property="og:description"]');
+        if (ogDesc) ogDesc.setAttribute('content', detail.overview || 'Watch ' + title + ' on Hisyam TV.');
+        
+        var ogImage = document.querySelector('meta[property="og:image"]');
+        if (!ogImage) {
+          ogImage = document.createElement('meta');
+          ogImage.setAttribute('property', 'og:image');
+          document.head.appendChild(ogImage);
+        }
+        if (detail.backdrop_path) {
+          ogImage.setAttribute('content', backdropUrl(detail.backdrop_path));
+        }
+      } catch (e) {
+        console.warn('Failed to update meta tags', e);
+      }
 
       // Fill in info
       document.getElementById('detail-title').textContent = title;
@@ -1430,17 +1479,39 @@
       trailerBtn.onclick = playTrailer;
       actionsEl.appendChild(trailerBtn);
 
+      var savedProgress = null;
+      if (type === 'tv') {
+        try {
+          var progress = JSON.parse(localStorage.getItem('hisyamtv_progress')) || {};
+          savedProgress = progress[id];
+        } catch (e) {}
+      }
+
       // Watch Now button
       var watchBtn = document.createElement('button');
       watchBtn.className = 'btn-watch';
       watchBtn.id = 'watch-now-btn';
-      watchBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Watch Now';
+      if (savedProgress) {
+        watchBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Resume S' + savedProgress.season + ' E' + savedProgress.episode;
+      } else {
+        watchBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Watch Now';
+      }
       watchBtn.onclick = function () {
         if (type === 'tv') {
-          var selSeason = document.getElementById('sel-season');
-          var s = selSeason ? parseInt(selSeason.value) : 1;
-          var e = currentEps.length ? currentEps[0].episode_number : 1;
+          var s = 1;
+          var e = 1;
+          if (savedProgress) {
+            s = savedProgress.season;
+            e = savedProgress.episode;
+          } else {
+            var selSeason = document.getElementById('sel-season');
+            s = selSeason ? parseInt(selSeason.value) : 1;
+            e = currentEps.length ? currentEps[0].episode_number : 1;
+          }
           loadStream(id, type, s, e);
+          var selSeasonEl = document.getElementById('sel-season');
+          if (selSeasonEl) selSeasonEl.value = s;
+          fetchEpisodes(id, s);
         } else {
           loadStream(id, type);
         }
@@ -1506,10 +1577,18 @@
           ? validSeasons
           : Array.from({ length: detail.number_of_seasons }, function (_, i) { return { season_number: i + 1 }; });
 
+        var initialSeason = 1;
+        if (savedProgress) {
+          initialSeason = savedProgress.season;
+        }
+
         seasonsArr.forEach(function (s) {
           var opt = document.createElement('option');
           opt.value = s.season_number;
           opt.textContent = 'Season ' + s.season_number;
+          if (s.season_number == initialSeason) {
+            opt.selected = true;
+          }
           selSeason.appendChild(opt);
         });
 
@@ -1525,7 +1604,9 @@
         epWrap.appendChild(epBlock);
 
         if (seasonsArr.length > 0) {
-          fetchEpisodes(id, seasonsArr[0].season_number);
+          var hasSeason = seasonsArr.some(function(s) { return s.season_number == initialSeason; });
+          var activeS = hasSeason ? initialSeason : seasonsArr[0].season_number;
+          fetchEpisodes(id, activeS);
         }
 
         selSeason.addEventListener('change', function () {
@@ -1745,10 +1826,28 @@
     episode = episode || 1;
     currentStream = { id: id, type: type, season: season, episode: episode };
 
+    if (type === 'tv') {
+      try {
+        var progress = JSON.parse(localStorage.getItem('hisyamtv_progress')) || {};
+        progress[id] = { season: season, episode: episode, timestamp: Date.now() };
+        localStorage.setItem('hisyamtv_progress', JSON.stringify(progress));
+      } catch (e) {}
+
+      // Update Watch Now button text dynamically to "Playing"
+      var watchBtn = document.getElementById('watch-now-btn');
+      if (watchBtn) {
+        watchBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Playing S' + season + ' E' + episode;
+      }
+    }
+
     var ytContainer = document.getElementById('youtube-container');
     var placeholder = document.getElementById('player-placeholder');
     var streamContainer = document.getElementById('stream-container');
     var streamIframe = document.getElementById('stream-iframe');
+
+    // Stop YouTube trailer from playing in the background
+    var ytIframe = document.getElementById('youtube-iframe');
+    if (ytIframe) ytIframe.src = '';
 
     if (ytContainer) ytContainer.style.display = 'none';
     if (placeholder) placeholder.style.display = 'none';
@@ -1788,10 +1887,20 @@
       return;
     }
 
+    var savedProgress = null;
+    try {
+      var progress = JSON.parse(localStorage.getItem('hisyamtv_progress')) || {};
+      savedProgress = progress[tvId];
+    } catch (e) {}
+
     currentEps.forEach(function (ep) {
-      var isActive = currentStream &&
-        currentStream.season == seasonNum &&
-        currentStream.episode == ep.episode_number;
+      var isActive = false;
+      if (currentStream) {
+        isActive = currentStream.season == seasonNum && currentStream.episode == ep.episode_number;
+      } else if (savedProgress) {
+        isActive = savedProgress.season == seasonNum && savedProgress.episode == ep.episode_number;
+      }
+
       var epCard = document.createElement('div');
       epCard.className = 'ep-card' + (isActive ? ' ep-card--active' : '');
       epCard.onclick = function () {
@@ -2067,6 +2176,18 @@
     if (footerHome) footerHome.addEventListener('click', function (e) { e.preventDefault(); navigate('#home'); });
     if (footerMovies) footerMovies.addEventListener('click', function (e) { e.preventDefault(); navigate('#movies'); });
     if (footerSeries) footerSeries.addEventListener('click', function (e) { e.preventDefault(); navigate('#series'); });
+
+    // Clear History Click
+    var clearHistoryBtn = document.getElementById('clear-history-btn');
+    if (clearHistoryBtn) {
+      clearHistoryBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        saveList(HISTORY_KEY, []);
+        var sec = document.getElementById('section-history');
+        if (sec) sec.style.display = 'none';
+        showToast('Watch history cleared');
+      });
+    }
 
     // Watchlist badge
     updateWatchlistBadge();
