@@ -1,0 +1,23 @@
+{
+  "name": "hisyam-tv",
+  "version": "1.0.0",
+  "description": "Watch your favorite movies and series. Free unlimited streaming.",
+  "main": "public/index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrhisyammm/tv.git"
+  },
+  "keywords": ["movies", "series", "streaming", "tv"],
+  "author": "mrhisyammm",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mrhisyammm/tv/issues"
+  },
+  "homepage": "https://github.com/mrhisyammm/tv#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
