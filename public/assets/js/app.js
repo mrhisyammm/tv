@@ -2420,19 +2420,17 @@
       fetchIPTV('channels.json'),
       fetchIPTV('countries.json'),
       fetchIPTV('categories.json'),
-      // Fetch default verified playlists (Indonesia & Sports) immediately
-      fetchM3U('https://iptv-org.github.io/iptv/countries/id.m3u'),
-      fetchM3U('https://iptv-org.github.io/iptv/categories/sports.m3u'),
-      // Fetch extra Indonesian playlist for more working local streams
+      // Load the FULL verified index.m3u (~2.7MB, thousands of channels worldwide)
+      fetchM3U('https://iptv-org.github.io/iptv/index.m3u'),
+      // Extra Indonesian playlist for more local streams
       fetchM3U('https://raw.githubusercontent.com/riotryulianto/iptv-playlists/main/iptv.m3u')
     ]).then(function (results) {
       iptvCache.channels = results[0];
       iptvCache.countries = results[1];
       iptvCache.categories = results[2];
 
-      var idM3uStreams = results[3];
-      var sportsM3uStreams = results[4];
-      var extraIdStreams = results[5];
+      var allStreams = results[3];
+      var extraIdStreams = results[4];
 
       // Build country & category maps
       var countryMap = {};
@@ -2461,13 +2459,14 @@
         };
       });
 
-      // Merge initial streams
-      mergeM3UStreams(idM3uStreams, 'ID');
-      mergeM3UStreams(sportsM3uStreams);
+      // Merge ALL verified streams from the full index.m3u
+      mergeM3UStreams(allStreams);
+      // Merge extra Indonesian streams
       mergeM3UStreams(extraIdStreams, 'ID');
 
-      iptvCache.loadedCountries['ID'] = true;
-      iptvCache.loadedCategories['sports'] = true;
+      // Mark all countries & categories as loaded since index.m3u covers everything
+      iptvCache.loadedCountries['_all'] = true;
+      iptvCache.loadedCategories['_all'] = true;
 
       updateMergedChannels();
       iptvCache.loading = false;
@@ -2478,6 +2477,8 @@
   }
 
   function loadCountryStreams(countryCode) {
+    // All streams already loaded from index.m3u — no need to fetch per-country
+    if (iptvCache.loadedCountries['_all']) return Promise.resolve();
     if (!countryCode) return Promise.resolve();
     if (iptvCache.loadedCountries[countryCode]) return Promise.resolve();
 
@@ -2497,6 +2498,8 @@
   }
 
   function loadCategoryStreams(catId) {
+    // All streams already loaded from index.m3u — no need to fetch per-category
+    if (iptvCache.loadedCategories['_all']) return Promise.resolve();
     if (!catId) return Promise.resolve();
     var cleanCatId = catId.toLowerCase();
     if (iptvCache.loadedCategories[cleanCatId]) return Promise.resolve();
