@@ -2311,23 +2311,39 @@
     return streamsList;
   }
 
+  // Fast name→id lookup map (built once, updated on dynamic adds)
+  var _nameLookup = {};
+
+  function buildNameLookup() {
+    _nameLookup = {};
+    Object.keys(iptvCache.channelMap).forEach(function (id) {
+      var key = iptvCache.channelMap[id].name.toLowerCase();
+      if (!_nameLookup[key]) _nameLookup[key] = id;
+    });
+  }
+
   function mergeM3UStreams(streams, forceCountryCode) {
-    streams.forEach(function (s) {
+    for (var i = 0; i < streams.length; i++) {
+      var s = streams[i];
       var ch = null;
+
+      // O(1) lookup by tvgId
       if (s.tvgId && iptvCache.channelMap[s.tvgId]) {
         ch = iptvCache.channelMap[s.tvgId];
-      } else {
-        // Try match by name
-        var matchedId = Object.keys(iptvCache.channelMap).find(function (id) {
-          return iptvCache.channelMap[id].name.toLowerCase() === s.name.toLowerCase();
-        });
+      } else if (s.name) {
+        // O(1) lookup by name
+        var nameKey = s.name.toLowerCase();
+        var matchedId = _nameLookup[nameKey];
         if (matchedId) ch = iptvCache.channelMap[matchedId];
       }
 
       if (ch) {
-        // Avoid duplicate streams
-        var exists = ch.streams.some(function (str) { return str.url === s.url; });
-        if (!exists) {
+        // Avoid duplicate streams (check url set)
+        var dominated = false;
+        for (var j = 0; j < ch.streams.length; j++) {
+          if (ch.streams[j].url === s.url) { dominated = true; break; }
+        }
+        if (!dominated) {
           ch.streams.push({
             url: s.url,
             quality: 'Sumber ' + (ch.streams.length + 1)
@@ -2340,12 +2356,12 @@
       } else {
         // Create dynamic channel
         var dynamicId = s.tvgId || s.name;
-        if (!dynamicId) return;
+        if (!dynamicId) continue;
 
         if (!iptvCache.channelMap[dynamicId]) {
           var country = forceCountryCode || 'Unknown';
           var countryName = 'Other';
-          var flag = '🌐';
+          var flag = '\uD83C\uDF10';
           if (forceCountryCode && iptvCache.countries) {
             var cObj = iptvCache.countries.find(function(c) { return c.code === forceCountryCode; });
             if (cObj) {
@@ -2363,14 +2379,16 @@
             categories: s.group ? [s.group.toLowerCase()] : [],
             categoryNames: s.group ? [s.group] : [],
             logo: s.logo || '',
-            streams: [{
-              url: s.url,
-              quality: 'Sumber 1'
-            }]
+            streams: [{ url: s.url, quality: 'Sumber 1' }]
           };
+          // Update name lookup
+          _nameLookup[s.name.toLowerCase()] = dynamicId;
         } else {
           var dynCh = iptvCache.channelMap[dynamicId];
-          var existsDyn = dynCh.streams.some(function (str) { return str.url === s.url; });
+          var existsDyn = false;
+          for (var k = 0; k < dynCh.streams.length; k++) {
+            if (dynCh.streams[k].url === s.url) { existsDyn = true; break; }
+          }
           if (!existsDyn) {
             dynCh.streams.push({
               url: s.url,
@@ -2379,7 +2397,26 @@
           }
         }
       }
-    });
+    }
+  }
+
+  // Batched merge: process chunks of streams with setTimeout to avoid freezing
+  function mergeM3UStreamsBatched(streams, forceCountryCode, batchSize, onDone) {
+    var idx = 0;
+    batchSize = batchSize || 500;
+
+    function processBatch() {
+      var end = Math.min(idx + batchSize, streams.length);
+      var batch = streams.slice(idx, end);
+      mergeM3UStreams(batch, forceCountryCode);
+      idx = end;
+      if (idx < streams.length) {
+        setTimeout(processBatch, 0);
+      } else {
+        if (onDone) onDone();
+      }
+    }
+    processBatch();
   }
 
   function updateMergedChannels() {
@@ -2416,21 +2453,23 @@
     if (iptvCache.initPromise) return iptvCache.initPromise;
 
     iptvCache.loading = true;
+
+    // Phase 1: Load metadata + small priority playlists FAST (UI appears quickly)
     iptvCache.initPromise = Promise.all([
       fetchIPTV('channels.json'),
       fetchIPTV('countries.json'),
       fetchIPTV('categories.json'),
-      // Load the FULL verified index.m3u (~2.7MB, thousands of channels worldwide)
-      fetchM3U('https://iptv-org.github.io/iptv/index.m3u'),
-      // Extra Indonesian playlist for more local streams
+      fetchM3U('https://iptv-org.github.io/iptv/countries/id.m3u'),
+      fetchM3U('https://iptv-org.github.io/iptv/categories/sports.m3u'),
       fetchM3U('https://raw.githubusercontent.com/riotryulianto/iptv-playlists/main/iptv.m3u')
     ]).then(function (results) {
       iptvCache.channels = results[0];
       iptvCache.countries = results[1];
       iptvCache.categories = results[2];
 
-      var allStreams = results[3];
-      var extraIdStreams = results[4];
+      var idStreams = results[3];
+      var sportsStreams = results[4];
+      var extraIdStreams = results[5];
 
       // Build country & category maps
       var countryMap = {};
@@ -2459,17 +2498,52 @@
         };
       });
 
-      // Merge ALL verified streams from the full index.m3u
-      mergeM3UStreams(allStreams);
-      // Merge extra Indonesian streams
+      // Build fast name lookup
+      buildNameLookup();
+
+      // Merge priority playlists (small, instant)
+      mergeM3UStreams(idStreams, 'ID');
+      mergeM3UStreams(sportsStreams);
       mergeM3UStreams(extraIdStreams, 'ID');
 
-      // Mark all countries & categories as loaded since index.m3u covers everything
-      iptvCache.loadedCountries['_all'] = true;
-      iptvCache.loadedCategories['_all'] = true;
+      iptvCache.loadedCountries['ID'] = true;
+      iptvCache.loadedCategories['sports'] = true;
 
       updateMergedChannels();
       iptvCache.loading = false;
+
+      // Phase 2: Load FULL index.m3u in background (non-blocking)
+      fetch('https://iptv-org.github.io/iptv/index.m3u')
+        .then(function (res) { return res.text(); })
+        .then(function (text) {
+          var allStreams = parseM3U(text);
+
+          // Update loading indicator
+          var statsEl = document.getElementById('livetv-stats');
+          if (statsEl) statsEl.textContent = iptvCache.merged.length + ' channels (loading more...)';
+
+          // Merge in batches to avoid freezing
+          mergeM3UStreamsBatched(allStreams, null, 500, function () {
+            iptvCache.loadedCountries['_all'] = true;
+            iptvCache.loadedCategories['_all'] = true;
+            updateMergedChannels();
+
+            // Re-render grid if user is still on Live TV
+            var route = parseRoute();
+            if (route.page === 'livetv' && !route.param) {
+              renderLiveTVGrid();
+              var statsEl2 = document.getElementById('livetv-stats');
+              if (statsEl2) {
+                var filtered = getFilteredLiveTVChannels();
+                statsEl2.textContent = filtered.length + ' channels found';
+              }
+            }
+          });
+        })
+        .catch(function (e) {
+          console.warn('[IPTV] Background index.m3u load failed:', e.message);
+        });
+
       return iptvCache.merged;
     });
 
