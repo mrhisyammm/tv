@@ -404,6 +404,13 @@
       case 'categories':
         showGridView('All Categories', '/discover/', {}, '');
         break;
+      case 'livetv':
+        if (route.param) {
+          showLiveTVPlayer(decodeURIComponent(route.param));
+        } else {
+          showLiveTVView();
+        }
+        break;
       case 'surpriseme':
         surpriseMe();
         break;
@@ -445,7 +452,7 @@
   // ============================================================
   // VIEW SWITCHING
   // ============================================================
-  var views = ['home-view', 'grid-view', 'detail-view'];
+  var views = ['home-view', 'grid-view', 'detail-view', 'livetv-view'];
 
   function showView(viewId) {
     // Bersihkan infinite scroll listener tiap ganti view
@@ -469,6 +476,12 @@
       if (ytIframe) ytIframe.src = '';
       if (streamIframe) streamIframe.src = '';
       currentStream = null;
+    }
+
+    // Kill HLS player when leaving live TV view
+    if (viewId !== 'livetv-view' && window._hlsInstance) {
+      window._hlsInstance.destroy();
+      window._hlsInstance = null;
     }
 
     // Reset document title when not on detail page
@@ -2212,6 +2225,595 @@
 
     // Watchlist badge
     updateWatchlistBadge();
+  }
+
+  // ============================================================
+  // LIVE TV — IPTV channels from around the world
+  // ============================================================
+  var IPTV_API = 'https://iptv-org.github.io/api';
+  var iptvCache = {
+    channels: null,
+    streams: null,
+    countries: null,
+    categories: null,
+    logos: null,
+    merged: null,
+    loading: false
+  };
+
+  function fetchIPTV(file) {
+    return fetch(IPTV_API + '/' + file)
+      .then(function (res) { return res.json(); })
+      .catch(function (e) {
+        console.warn('[IPTV] fetch error', file, e.message);
+        return [];
+      });
+  }
+
+  function loadIPTVData() {
+    if (iptvCache.merged) return Promise.resolve(iptvCache.merged);
+    if (iptvCache.loading) {
+      return new Promise(function (resolve) {
+        var check = setInterval(function () {
+          if (iptvCache.merged) { clearInterval(check); resolve(iptvCache.merged); }
+        }, 200);
+      });
+    }
+    iptvCache.loading = true;
+
+    return Promise.all([
+      fetchIPTV('channels.json'),
+      fetchIPTV('streams.json'),
+      fetchIPTV('countries.json'),
+      fetchIPTV('categories.json'),
+      fetchIPTV('logos.json')
+    ]).then(function (results) {
+      iptvCache.channels = results[0];
+      iptvCache.streams = results[1];
+      iptvCache.countries = results[2];
+      iptvCache.categories = results[3];
+      iptvCache.logos = results[4];
+
+      // Build lookup maps
+      var countryMap = {};
+      iptvCache.countries.forEach(function (c) {
+        countryMap[c.code] = c;
+      });
+
+      var logoMap = {};
+      iptvCache.logos.forEach(function (l) {
+        if (l.in_use && !logoMap[l.channel]) {
+          logoMap[l.channel] = l.url;
+        }
+      });
+
+      var categoryMap = {};
+      iptvCache.categories.forEach(function (c) {
+        categoryMap[c.id] = c.name;
+      });
+
+      // Build channel map
+      var channelMap = {};
+      iptvCache.channels.forEach(function (ch) {
+        if (ch.closed || ch.is_nsfw) return;
+        channelMap[ch.id] = {
+          id: ch.id,
+          name: ch.name,
+          country: ch.country,
+          countryName: countryMap[ch.country] ? countryMap[ch.country].name : ch.country,
+          flag: countryMap[ch.country] ? countryMap[ch.country].flag : '',
+          categories: ch.categories || [],
+          categoryNames: (ch.categories || []).map(function (cid) { return categoryMap[cid] || cid; }),
+          logo: logoMap[ch.id] || '',
+          streams: []
+        };
+      });
+
+      // Attach streams to channels
+      iptvCache.streams.forEach(function (s) {
+        if (s.channel && channelMap[s.channel]) {
+          channelMap[s.channel].streams.push({
+            url: s.url,
+            quality: s.quality || '',
+            user_agent: s.user_agent || '',
+            referrer: s.referrer || ''
+          });
+        }
+      });
+
+      // Filter to channels that have at least one stream
+      var merged = [];
+      Object.keys(channelMap).forEach(function (id) {
+        if (channelMap[id].streams.length > 0) {
+          merged.push(channelMap[id]);
+        }
+      });
+
+      // Sort by country name, then channel name
+      merged.sort(function (a, b) {
+        if (a.countryName < b.countryName) return -1;
+        if (a.countryName > b.countryName) return 1;
+        if (a.name < b.name) return -1;
+        if (a.name > b.name) return 1;
+        return 0;
+      });
+
+      iptvCache.merged = merged;
+      iptvCache.loading = false;
+      return merged;
+    });
+  }
+
+  // Popular countries to show at top of filter
+  var POPULAR_COUNTRIES = ['ID', 'US', 'GB', 'IN', 'BR', 'DE', 'FR', 'ES', 'IT', 'JP', 'KR', 'TR', 'MX', 'AR', 'RU', 'SA', 'AE', 'QA', 'MY', 'TH', 'PH', 'AU', 'CA', 'NL', 'PT'];
+
+  var liveTVState = {
+    query: '',
+    country: '',
+    category: '',
+    page: 1,
+    perPage: 60
+  };
+
+  function showLiveTVView() {
+    showView('livetv-view');
+    document.title = 'Hisyam TV \u2014 Live TV';
+    var container = document.getElementById('livetv-view');
+
+    container.innerHTML =
+      '<div class="livetv-container">' +
+        '<div class="livetv-header">' +
+          '<h2 class="grid-view-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg> Live TV</h2>' +
+          '<p class="livetv-subtitle">Stream live channels from around the world</p>' +
+        '</div>' +
+        '<div class="livetv-filters">' +
+          '<div class="livetv-search-wrap">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
+            '<input type="text" id="livetv-search" class="livetv-search" placeholder="Search channels..." autocomplete="off">' +
+          '</div>' +
+          '<div class="multi-select custom-single-select" id="livetv-country-wrap" data-value="">' +
+            '<div class="multi-select-toggle" id="livetv-country-toggle">All Countries</div>' +
+            '<div class="multi-select-menu livetv-country-menu" id="livetv-country-menu"></div>' +
+          '</div>' +
+          '<div class="multi-select custom-single-select" id="livetv-cat-wrap" data-value="">' +
+            '<div class="multi-select-toggle" id="livetv-cat-toggle">All Categories</div>' +
+            '<div class="multi-select-menu" id="livetv-cat-menu"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="livetv-stats" id="livetv-stats"></div>' +
+        '<div class="livetv-grid" id="livetv-grid"></div>' +
+        '<div class="livetv-load-more" id="livetv-load-more" style="display:none;">' +
+          '<button class="btn-load-more" id="livetv-more-btn">Load More Channels</button>' +
+        '</div>' +
+        '<div class="livetv-loading" id="livetv-loading">' +
+          '<div class="livetv-spinner"></div>' +
+          '<p>Loading channels...</p>' +
+        '</div>' +
+      '</div>';
+
+    // Reset state
+    liveTVState.query = '';
+    liveTVState.country = '';
+    liveTVState.category = '';
+    liveTVState.page = 1;
+
+    loadIPTVData().then(function (channels) {
+      document.getElementById('livetv-loading').style.display = 'none';
+
+      // Build country options
+      var countryCount = {};
+      var countryNames = {};
+      var countryFlags = {};
+      channels.forEach(function (ch) {
+        countryCount[ch.country] = (countryCount[ch.country] || 0) + 1;
+        countryNames[ch.country] = ch.countryName;
+        countryFlags[ch.country] = ch.flag;
+      });
+
+      var countryCodes = Object.keys(countryCount);
+      // Sort: popular first, then by count
+      countryCodes.sort(function (a, b) {
+        var aP = POPULAR_COUNTRIES.indexOf(a);
+        var bP = POPULAR_COUNTRIES.indexOf(b);
+        if (aP !== -1 && bP !== -1) return aP - bP;
+        if (aP !== -1) return -1;
+        if (bP !== -1) return 1;
+        return (countryCount[b] || 0) - (countryCount[a] || 0);
+      });
+
+      var countryMenu = document.getElementById('livetv-country-menu');
+      var countryHtml = '<div class="single-select-option selected" data-value="">All Countries (' + channels.length + ')</div>';
+      countryCodes.forEach(function (code) {
+        countryHtml += '<div class="single-select-option" data-value="' + code + '">' +
+          (countryFlags[code] || '') + ' ' + (countryNames[code] || code) + ' (' + countryCount[code] + ')' +
+        '</div>';
+      });
+      countryMenu.innerHTML = countryHtml;
+
+      // Build category options
+      var catCount = {};
+      channels.forEach(function (ch) {
+        ch.categoryNames.forEach(function (cat) {
+          catCount[cat] = (catCount[cat] || 0) + 1;
+        });
+      });
+      var catNames = Object.keys(catCount).sort(function (a, b) { return (catCount[b] || 0) - (catCount[a] || 0); });
+
+      var catMenu = document.getElementById('livetv-cat-menu');
+      var catHtml = '<div class="single-select-option selected" data-value="">All Categories</div>';
+      catNames.forEach(function (cat) {
+        catHtml += '<div class="single-select-option" data-value="' + cat + '">' + cat + ' (' + catCount[cat] + ')</div>';
+      });
+      catMenu.innerHTML = catHtml;
+
+      // Setup dropdown interactions
+      setupLiveTVDropdowns();
+
+      // Search input
+      var searchInput = document.getElementById('livetv-search');
+      var searchTimer = null;
+      searchInput.addEventListener('input', function () {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () {
+          liveTVState.query = searchInput.value.trim().toLowerCase();
+          liveTVState.page = 1;
+          renderLiveTVGrid();
+        }, 300);
+      });
+
+      // Load more button
+      document.getElementById('livetv-more-btn').addEventListener('click', function () {
+        liveTVState.page++;
+        renderLiveTVGrid(true);
+      });
+
+      // Initial render
+      renderLiveTVGrid();
+    });
+  }
+
+  function setupLiveTVDropdowns() {
+    var dropdowns = document.querySelectorAll('#livetv-view .multi-select');
+    dropdowns.forEach(function (dd) {
+      var toggle = dd.querySelector('.multi-select-toggle');
+      if (toggle) {
+        toggle.addEventListener('click', function (e) {
+          e.stopPropagation();
+          dropdowns.forEach(function (other) { if (other !== dd) other.classList.remove('open'); });
+          dd.classList.toggle('open');
+        });
+      }
+    });
+
+    // Country options
+    document.getElementById('livetv-country-menu').addEventListener('click', function (e) {
+      var opt = e.target.closest('.single-select-option');
+      if (!opt) return;
+      e.stopPropagation();
+      var wrap = document.getElementById('livetv-country-wrap');
+      var val = opt.getAttribute('data-value');
+      wrap.querySelectorAll('.single-select-option').forEach(function (o) { o.classList.remove('selected'); });
+      opt.classList.add('selected');
+      wrap.setAttribute('data-value', val);
+      wrap.classList.remove('open');
+      document.getElementById('livetv-country-toggle').textContent = opt.textContent.trim();
+      liveTVState.country = val;
+      liveTVState.page = 1;
+      renderLiveTVGrid();
+    });
+
+    // Category options
+    document.getElementById('livetv-cat-menu').addEventListener('click', function (e) {
+      var opt = e.target.closest('.single-select-option');
+      if (!opt) return;
+      e.stopPropagation();
+      var wrap = document.getElementById('livetv-cat-wrap');
+      var val = opt.getAttribute('data-value');
+      wrap.querySelectorAll('.single-select-option').forEach(function (o) { o.classList.remove('selected'); });
+      opt.classList.add('selected');
+      wrap.setAttribute('data-value', val);
+      wrap.classList.remove('open');
+      document.getElementById('livetv-cat-toggle').textContent = opt.textContent.trim();
+      liveTVState.category = val;
+      liveTVState.page = 1;
+      renderLiveTVGrid();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', function (e) {
+      dropdowns.forEach(function (dd) {
+        if (!dd.contains(e.target)) dd.classList.remove('open');
+      });
+    });
+  }
+
+  function getFilteredLiveTVChannels() {
+    if (!iptvCache.merged) return [];
+    return iptvCache.merged.filter(function (ch) {
+      if (liveTVState.country && ch.country !== liveTVState.country) return false;
+      if (liveTVState.category && ch.categoryNames.indexOf(liveTVState.category) === -1) return false;
+      if (liveTVState.query && ch.name.toLowerCase().indexOf(liveTVState.query) === -1) return false;
+      return true;
+    });
+  }
+
+  function renderLiveTVGrid(append) {
+    var grid = document.getElementById('livetv-grid');
+    var stats = document.getElementById('livetv-stats');
+    var loadMoreWrap = document.getElementById('livetv-load-more');
+
+    var filtered = getFilteredLiveTVChannels();
+    var total = filtered.length;
+    var end = liveTVState.page * liveTVState.perPage;
+    var visible = filtered.slice(0, end);
+
+    if (!append) grid.innerHTML = '';
+
+    var startIdx = append ? (liveTVState.page - 1) * liveTVState.perPage : 0;
+    var items = append ? filtered.slice(startIdx, end) : visible;
+
+    items.forEach(function (ch) {
+      var card = document.createElement('div');
+      card.className = 'livetv-card';
+      card.setAttribute('data-id', ch.id);
+
+      var logoHtml = ch.logo
+        ? '<img src="' + ch.logo + '" alt="' + ch.name + '" class="livetv-card-logo" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+          '<div class="livetv-card-logo-placeholder" style="display:none;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg></div>'
+        : '<div class="livetv-card-logo-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg></div>';
+
+      var catBadges = ch.categoryNames.slice(0, 2).map(function (c) {
+        var badgeClass = 'livetv-cat-badge';
+        if (c.toLowerCase() === 'sports') badgeClass += ' livetv-cat-badge--sports';
+        else if (c.toLowerCase() === 'news') badgeClass += ' livetv-cat-badge--news';
+        else if (c.toLowerCase() === 'entertainment') badgeClass += ' livetv-cat-badge--entertainment';
+        else if (c.toLowerCase() === 'music') badgeClass += ' livetv-cat-badge--music';
+        return '<span class="' + badgeClass + '">' + c + '</span>';
+      }).join('');
+
+      card.innerHTML =
+        '<div class="livetv-card-live-dot"></div>' +
+        '<div class="livetv-card-logo-wrap">' + logoHtml + '</div>' +
+        '<div class="livetv-card-info">' +
+          '<div class="livetv-card-name">' + ch.name + '</div>' +
+          '<div class="livetv-card-meta">' +
+            '<span class="livetv-card-country">' + ch.flag + ' ' + ch.countryName + '</span>' +
+          '</div>' +
+          '<div class="livetv-card-cats">' + catBadges + '</div>' +
+        '</div>' +
+        '<div class="livetv-card-play">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>' +
+        '</div>';
+
+      card.addEventListener('click', function () {
+        navigate('#livetv/' + encodeURIComponent(ch.id));
+      });
+
+      grid.appendChild(card);
+    });
+
+    // Stats
+    stats.textContent = total + ' channel' + (total !== 1 ? 's' : '') + ' found';
+
+    // Load more visibility
+    loadMoreWrap.style.display = end < total ? 'flex' : 'none';
+  }
+
+  function showLiveTVPlayer(channelId) {
+    showView('livetv-view');
+    var container = document.getElementById('livetv-view');
+
+    container.innerHTML =
+      '<div class="livetv-player-container">' +
+        '<div class="livetv-player-back">' +
+          '<button class="btn-back-livetv" id="livetv-back-btn">' +
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m7-7-7 7 7 7"/></svg>' +
+            ' Back to Channels' +
+          '</button>' +
+        '</div>' +
+        '<div class="livetv-player-wrap">' +
+          '<video id="livetv-video" class="livetv-video" controls autoplay playsinline></video>' +
+          '<div class="livetv-player-overlay" id="livetv-player-overlay">' +
+            '<div class="livetv-spinner"></div>' +
+            '<p>Loading stream...</p>' +
+          '</div>' +
+          '<div class="livetv-player-error" id="livetv-player-error" style="display:none;">' +
+            '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+            '<p>Stream unavailable</p>' +
+            '<button class="btn-try-next" id="livetv-try-next">Try Next Stream</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="livetv-player-info" id="livetv-player-info">' +
+          '<div class="livetv-player-loading">Loading channel info...</div>' +
+        '</div>' +
+        '<div class="livetv-related" id="livetv-related">' +
+          '<h3 class="livetv-related-title">More Channels</h3>' +
+          '<div class="livetv-related-grid" id="livetv-related-grid"></div>' +
+        '</div>' +
+      '</div>';
+
+    document.getElementById('livetv-back-btn').addEventListener('click', function () {
+      navigate('#livetv');
+    });
+
+    loadIPTVData().then(function (channels) {
+      var channel = channels.find(function (ch) { return ch.id === channelId; });
+      if (!channel) {
+        showToast('Channel not found');
+        navigate('#livetv');
+        return;
+      }
+
+      document.title = channel.name + ' \u2014 Live TV \u2014 Hisyam TV';
+
+      // Update channel info
+      var infoEl = document.getElementById('livetv-player-info');
+      var logoHtml = channel.logo
+        ? '<img src="' + channel.logo + '" alt="" class="livetv-pinfo-logo" onerror="this.style.display=\'none\'">'
+        : '';
+
+      var catBadges = channel.categoryNames.map(function (c) {
+        var badgeClass = 'livetv-cat-badge';
+        if (c.toLowerCase() === 'sports') badgeClass += ' livetv-cat-badge--sports';
+        else if (c.toLowerCase() === 'news') badgeClass += ' livetv-cat-badge--news';
+        else if (c.toLowerCase() === 'entertainment') badgeClass += ' livetv-cat-badge--entertainment';
+        else if (c.toLowerCase() === 'music') badgeClass += ' livetv-cat-badge--music';
+        return '<span class="' + badgeClass + '">' + c + '</span>';
+      }).join('');
+
+      var qualityBadges = channel.streams.map(function (s, idx) {
+        return '<button class="livetv-quality-btn' + (idx === 0 ? ' active' : '') + '" data-idx="' + idx + '">' +
+          (s.quality || 'Stream ' + (idx + 1)) +
+        '</button>';
+      }).join('');
+
+      infoEl.innerHTML =
+        '<div class="livetv-pinfo">' +
+          logoHtml +
+          '<div class="livetv-pinfo-text">' +
+            '<h2 class="livetv-pinfo-name">' + channel.name + '</h2>' +
+            '<div class="livetv-pinfo-meta">' +
+              '<span>' + channel.flag + ' ' + channel.countryName + '</span>' +
+              '<span class="livetv-live-badge">LIVE</span>' +
+            '</div>' +
+            '<div class="livetv-pinfo-cats">' + catBadges + '</div>' +
+          '</div>' +
+        '</div>' +
+        (channel.streams.length > 1
+          ? '<div class="livetv-quality-wrap"><span class="livetv-quality-label">Streams:</span>' + qualityBadges + '</div>'
+          : '');
+
+      // Quality/stream switcher
+      var currentStreamIdx = 0;
+      var qualityBtns = infoEl.querySelectorAll('.livetv-quality-btn');
+      qualityBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var idx = parseInt(this.getAttribute('data-idx'));
+          currentStreamIdx = idx;
+          qualityBtns.forEach(function (b) { b.classList.remove('active'); });
+          this.classList.add('active');
+          playHLSStream(channel.streams[idx]);
+        });
+      });
+
+      // Try next stream button
+      document.getElementById('livetv-try-next').addEventListener('click', function () {
+        currentStreamIdx = (currentStreamIdx + 1) % channel.streams.length;
+        qualityBtns.forEach(function (b) { b.classList.remove('active'); });
+        var nextBtn = infoEl.querySelector('.livetv-quality-btn[data-idx="' + currentStreamIdx + '"]');
+        if (nextBtn) nextBtn.classList.add('active');
+        document.getElementById('livetv-player-error').style.display = 'none';
+        document.getElementById('livetv-player-overlay').style.display = 'flex';
+        playHLSStream(channel.streams[currentStreamIdx]);
+      });
+
+      // Play first stream
+      playHLSStream(channel.streams[0]);
+
+      // Related channels (same country + category)
+      var related = channels.filter(function (ch) {
+        if (ch.id === channelId) return false;
+        if (ch.country === channel.country) return true;
+        var shared = ch.categoryNames.some(function (c) { return channel.categoryNames.indexOf(c) !== -1; });
+        return shared;
+      }).slice(0, 12);
+
+      var relGrid = document.getElementById('livetv-related-grid');
+      related.forEach(function (rch) {
+        var rcard = document.createElement('div');
+        rcard.className = 'livetv-card livetv-card--small';
+        var rlogo = rch.logo
+          ? '<img src="' + rch.logo + '" alt="" class="livetv-card-logo" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+            '<div class="livetv-card-logo-placeholder" style="display:none;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg></div>'
+          : '<div class="livetv-card-logo-placeholder"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg></div>';
+
+        rcard.innerHTML =
+          '<div class="livetv-card-live-dot"></div>' +
+          '<div class="livetv-card-logo-wrap">' + rlogo + '</div>' +
+          '<div class="livetv-card-info">' +
+            '<div class="livetv-card-name">' + rch.name + '</div>' +
+            '<div class="livetv-card-meta"><span class="livetv-card-country">' + rch.flag + ' ' + rch.countryName + '</span></div>' +
+          '</div>' +
+          '<div class="livetv-card-play"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>';
+
+        rcard.addEventListener('click', function () {
+          navigate('#livetv/' + encodeURIComponent(rch.id));
+        });
+        relGrid.appendChild(rcard);
+      });
+    });
+  }
+
+  function playHLSStream(streamInfo) {
+    var video = document.getElementById('livetv-video');
+    var overlay = document.getElementById('livetv-player-overlay');
+    var errorEl = document.getElementById('livetv-player-error');
+    if (!video) return;
+
+    // Destroy previous HLS instance
+    if (window._hlsInstance) {
+      window._hlsInstance.destroy();
+      window._hlsInstance = null;
+    }
+
+    overlay.style.display = 'flex';
+    errorEl.style.display = 'none';
+
+    var url = streamInfo.url;
+
+    if (Hls.isSupported()) {
+      var hlsConfig = {};
+      if (streamInfo.referrer) {
+        // Note: referrer headers can't be set via JS for security, but we try xhrSetup
+        hlsConfig.xhrSetup = function (xhr) {
+          if (streamInfo.user_agent) {
+            // User-Agent can't be set in browser XHR, but leave for documentation
+          }
+        };
+      }
+      var hls = new Hls(hlsConfig);
+      window._hlsInstance = hls;
+
+      hls.loadSource(url);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, function () {
+        overlay.style.display = 'none';
+        video.play().catch(function () {});
+      });
+
+      hls.on(Hls.Events.ERROR, function (event, data) {
+        if (data.fatal) {
+          overlay.style.display = 'none';
+          errorEl.style.display = 'flex';
+          console.warn('[HLS] Fatal error', data.type, data.details);
+        }
+      });
+
+      // Timeout: if not playing within 15s, show error
+      setTimeout(function () {
+        if (overlay.style.display !== 'none' && video.readyState < 2) {
+          overlay.style.display = 'none';
+          errorEl.style.display = 'flex';
+        }
+      }, 15000);
+
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS
+      video.src = url;
+      video.addEventListener('loadedmetadata', function () {
+        overlay.style.display = 'none';
+        video.play().catch(function () {});
+      });
+      video.addEventListener('error', function () {
+        overlay.style.display = 'none';
+        errorEl.style.display = 'flex';
+      });
+    } else {
+      overlay.style.display = 'none';
+      errorEl.style.display = 'flex';
+      errorEl.querySelector('p').textContent = 'HLS not supported in this browser';
+    }
   }
 
   // ============================================================

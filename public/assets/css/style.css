@@ -2274,3 +2274,584 @@ body {
     padding: 32px 16px;
   }
 }
+
+/* ============================================================
+   LIVE TV — Channel browser & HLS player
+   ============================================================ */
+
+/* ── Container ── */
+.livetv-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: calc(var(--nav-height) + 24px) 24px 40px;
+}
+
+.livetv-header {
+  margin-bottom: 24px;
+}
+
+.livetv-header .grid-view-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.livetv-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* ── Filters ── */
+.livetv-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.livetv-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+  transition: border-color var(--transition-fast);
+}
+
+.livetv-search-wrap:focus-within {
+  border-color: #00e5ff;
+}
+
+.livetv-search-wrap svg {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.livetv-search {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  padding: 10px 0;
+  width: 100%;
+  outline: none;
+}
+
+.livetv-search::placeholder {
+  color: var(--text-muted);
+}
+
+.livetv-country-menu {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+/* ── Stats ── */
+.livetv-stats {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+/* ── Channel Grid ── */
+.livetv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+/* ── Channel Card ── */
+.livetv-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  overflow: hidden;
+}
+
+.livetv-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+.livetv-card:hover .livetv-card-play {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.livetv-card--small {
+  padding: 10px 12px;
+}
+
+.livetv-card--small .livetv-card-logo-wrap {
+  width: 40px;
+  height: 40px;
+}
+
+/* ── Live dot ── */
+.livetv-card-live-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: #00e5ff;
+  border-radius: 50%;
+  animation: live-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.5);
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ── Logo ── */
+.livetv-card-logo-wrap {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.livetv-card-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.livetv-card-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Info ── */
+.livetv-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.livetv-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.livetv-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.livetv-card-country {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.livetv-card-cats {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* ── Category badges ── */
+.livetv-cat-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.livetv-cat-badge--sports {
+  background: rgba(76, 175, 80, 0.15);
+  color: #66bb6a;
+}
+
+.livetv-cat-badge--news {
+  background: rgba(33, 150, 243, 0.15);
+  color: #42a5f5;
+}
+
+.livetv-cat-badge--entertainment {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ffa726;
+}
+
+.livetv-cat-badge--music {
+  background: rgba(156, 39, 176, 0.15);
+  color: #ba68c8;
+}
+
+/* ── Play icon on card ── */
+.livetv-card-play {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #00e5ff;
+  color: #000;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all var(--transition-fast);
+}
+
+/* ── Load More ── */
+.livetv-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.btn-load-more {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 12px 32px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-load-more:hover {
+  background: var(--bg-card-hover);
+  border-color: #00e5ff;
+  color: #00e5ff;
+}
+
+/* ── Loading spinner ── */
+.livetv-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+  color: var(--text-secondary);
+}
+
+.livetv-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: #00e5ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   LIVE TV PLAYER
+   ============================================================ */
+
+.livetv-player-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: calc(var(--nav-height) + 16px) 24px 40px;
+}
+
+.livetv-player-back {
+  margin-bottom: 16px;
+}
+
+.btn-back-livetv {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-back-livetv:hover {
+  color: #00e5ff;
+  border-color: #00e5ff;
+}
+
+/* ── Video wrapper ── */
+.livetv-player-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.livetv-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.livetv-player-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  gap: 12px;
+  color: var(--text-secondary);
+  z-index: 2;
+}
+
+.livetv-player-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  gap: 12px;
+  color: var(--text-secondary);
+  z-index: 3;
+}
+
+.btn-try-next {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background var(--transition-fast);
+}
+
+.btn-try-next:hover {
+  background: var(--accent-hover);
+}
+
+/* ── Player info ── */
+.livetv-player-info {
+  margin-bottom: 24px;
+}
+
+.livetv-pinfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.livetv-pinfo-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+}
+
+.livetv-pinfo-name {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.livetv-pinfo-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.livetv-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 229, 255, 0.15);
+  color: #00e5ff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.livetv-live-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #00e5ff;
+  border-radius: 50%;
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+.livetv-pinfo-cats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* ── Quality/stream switcher ── */
+.livetv-quality-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.livetv-quality-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.livetv-quality-btn {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.livetv-quality-btn:hover {
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+.livetv-quality-btn.active {
+  background: #00e5ff;
+  color: #000;
+  border-color: #00e5ff;
+}
+
+/* ── Related channels ── */
+.livetv-related {
+  margin-top: 32px;
+}
+
+.livetv-related-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.livetv-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .livetv-container {
+    padding: calc(var(--nav-height) + 16px) 16px 32px;
+  }
+
+  .livetv-filters {
+    flex-direction: column;
+  }
+
+  .livetv-search-wrap {
+    max-width: 100%;
+  }
+
+  .livetv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .livetv-player-container {
+    padding: calc(var(--nav-height) + 8px) 12px 32px;
+  }
+
+  .livetv-player-wrap {
+    border-radius: var(--radius-sm);
+  }
+
+  .livetv-pinfo-name {
+    font-size: 18px;
+  }
+
+  .livetv-related-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .livetv-card {
+    padding: 10px 12px;
+  }
+
+  .livetv-card-logo-wrap {
+    width: 40px;
+    height: 40px;
+  }
+
+  .livetv-card-name {
+    font-size: 13px;
+  }
+
+  .livetv-card-play {
+    width: 30px;
+    height: 30px;
+  }
+
+  .livetv-card-play svg {
+    width: 14px;
+    height: 14px;
+  }
+}
