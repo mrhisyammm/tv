@@ -2231,14 +2231,18 @@
   // LIVE TV — IPTV channels from around the world
   // ============================================================
   var IPTV_API = 'https://iptv-org.github.io/api';
+  var useCorsProxy = false;
+
   var iptvCache = {
     channels: null,
-    streams: null,
     countries: null,
     categories: null,
-    logos: null,
-    merged: null,
-    loading: false
+    channelMap: {},
+    merged: [],
+    loadedCountries: {},
+    loadedCategories: {},
+    loading: false,
+    initPromise: null
   };
 
   function fetchIPTV(file) {
@@ -2250,41 +2254,190 @@
       });
   }
 
-  function loadIPTVData() {
-    if (iptvCache.merged) return Promise.resolve(iptvCache.merged);
-    if (iptvCache.loading) {
-      return new Promise(function (resolve) {
-        var check = setInterval(function () {
-          if (iptvCache.merged) { clearInterval(check); resolve(iptvCache.merged); }
-        }, 200);
+  function fetchM3U(url) {
+    return fetch(url)
+      .then(function (res) { return res.text(); })
+      .then(function (text) { return parseM3U(text); })
+      .catch(function (e) {
+        console.warn('[IPTV] M3U fetch error', url, e.message);
+        return [];
       });
-    }
-    iptvCache.loading = true;
+  }
 
-    return Promise.all([
+  function parseM3U(text) {
+    var lines = text.split('\n');
+    var streamsList = [];
+    var currentMetadata = null;
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (line.indexOf('#EXTINF:') === 0) {
+        var tvgId = '';
+        var tvgLogo = '';
+        var groupTitle = '';
+        var name = '';
+
+        var idMatch = line.match(/tvg-id="([^"]*)"/);
+        if (idMatch) tvgId = idMatch[1];
+
+        var logoMatch = line.match(/tvg-logo="([^"]*)"/);
+        if (logoMatch) tvgLogo = logoMatch[1];
+
+        var groupMatch = line.match(/group-title="([^"]*)"/);
+        if (groupMatch) groupTitle = groupMatch[1];
+
+        var commaIdx = line.lastIndexOf(',');
+        if (commaIdx !== -1) {
+          name = line.substring(commaIdx + 1).trim();
+        }
+
+        currentMetadata = {
+          tvgId: tvgId,
+          logo: tvgLogo,
+          group: groupTitle,
+          name: name
+        };
+      } else if (line && line.indexOf('#') !== 0 && currentMetadata) {
+        streamsList.push({
+          tvgId: currentMetadata.tvgId,
+          name: currentMetadata.name,
+          logo: currentMetadata.logo,
+          group: currentMetadata.group,
+          url: line
+        });
+        currentMetadata = null;
+      }
+    }
+    return streamsList;
+  }
+
+  function mergeM3UStreams(streams, forceCountryCode) {
+    streams.forEach(function (s) {
+      var ch = null;
+      if (s.tvgId && iptvCache.channelMap[s.tvgId]) {
+        ch = iptvCache.channelMap[s.tvgId];
+      } else {
+        // Try match by name
+        var matchedId = Object.keys(iptvCache.channelMap).find(function (id) {
+          return iptvCache.channelMap[id].name.toLowerCase() === s.name.toLowerCase();
+        });
+        if (matchedId) ch = iptvCache.channelMap[matchedId];
+      }
+
+      if (ch) {
+        // Avoid duplicate streams
+        var exists = ch.streams.some(function (str) { return str.url === s.url; });
+        if (!exists) {
+          ch.streams.push({
+            url: s.url,
+            quality: 'Sumber ' + (ch.streams.length + 1)
+          });
+        }
+        if (!ch.logo && s.logo) ch.logo = s.logo;
+        if (s.group && ch.categoryNames.indexOf(s.group) === -1) {
+          ch.categoryNames.push(s.group);
+        }
+      } else {
+        // Create dynamic channel
+        var dynamicId = s.tvgId || s.name;
+        if (!dynamicId) return;
+
+        if (!iptvCache.channelMap[dynamicId]) {
+          var country = forceCountryCode || 'Unknown';
+          var countryName = 'Other';
+          var flag = '🌐';
+          if (forceCountryCode && iptvCache.countries) {
+            var cObj = iptvCache.countries.find(function(c) { return c.code === forceCountryCode; });
+            if (cObj) {
+              countryName = cObj.name;
+              flag = cObj.flag;
+            }
+          }
+
+          iptvCache.channelMap[dynamicId] = {
+            id: dynamicId,
+            name: s.name,
+            country: country,
+            countryName: countryName,
+            flag: flag,
+            categories: s.group ? [s.group.toLowerCase()] : [],
+            categoryNames: s.group ? [s.group] : [],
+            logo: s.logo || '',
+            streams: [{
+              url: s.url,
+              quality: 'Sumber 1'
+            }]
+          };
+        } else {
+          var dynCh = iptvCache.channelMap[dynamicId];
+          var existsDyn = dynCh.streams.some(function (str) { return str.url === s.url; });
+          if (!existsDyn) {
+            dynCh.streams.push({
+              url: s.url,
+              quality: 'Sumber ' + (dynCh.streams.length + 1)
+            });
+          }
+        }
+      }
+    });
+  }
+
+  function updateMergedChannels() {
+    var merged = [];
+    Object.keys(iptvCache.channelMap).forEach(function (id) {
+      var ch = iptvCache.channelMap[id];
+      if (ch.streams.length > 0) {
+        merged.push(ch);
+      }
+    });
+
+    // Sort by country name, then channel name
+    merged.sort(function (a, b) {
+      // Prioritize Indonesia
+      if (a.country === 'ID' && b.country !== 'ID') return -1;
+      if (b.country === 'ID' && a.country !== 'ID') return 1;
+      // Prioritize sports category
+      var aSports = a.categoryNames.some(function (c) { return c.toLowerCase() === 'sports'; });
+      var bSports = b.categoryNames.some(function (c) { return c.toLowerCase() === 'sports'; });
+      if (aSports && !bSports) return -1;
+      if (bSports && !aSports) return 1;
+
+      if (a.countryName < b.countryName) return -1;
+      if (a.countryName > b.countryName) return 1;
+      if (a.name < b.name) return -1;
+      if (a.name > b.name) return 1;
+      return 0;
+    });
+
+    iptvCache.merged = merged;
+  }
+
+  function loadIPTVData() {
+    if (iptvCache.initPromise) return iptvCache.initPromise;
+
+    iptvCache.loading = true;
+    iptvCache.initPromise = Promise.all([
       fetchIPTV('channels.json'),
-      fetchIPTV('streams.json'),
       fetchIPTV('countries.json'),
       fetchIPTV('categories.json'),
-      fetchIPTV('logos.json')
+      // Fetch default verified playlists (Indonesia & Sports) immediately
+      fetchM3U('https://iptv-org.github.io/iptv/countries/id.m3u'),
+      fetchM3U('https://iptv-org.github.io/iptv/categories/sports.m3u'),
+      // Fetch extra Indonesian playlist for more working local streams
+      fetchM3U('https://raw.githubusercontent.com/riotryulianto/iptv-playlists/main/iptv.m3u')
     ]).then(function (results) {
       iptvCache.channels = results[0];
-      iptvCache.streams = results[1];
-      iptvCache.countries = results[2];
-      iptvCache.categories = results[3];
-      iptvCache.logos = results[4];
+      iptvCache.countries = results[1];
+      iptvCache.categories = results[2];
 
-      // Build lookup maps
+      var idM3uStreams = results[3];
+      var sportsM3uStreams = results[4];
+      var extraIdStreams = results[5];
+
+      // Build country & category maps
       var countryMap = {};
       iptvCache.countries.forEach(function (c) {
         countryMap[c.code] = c;
-      });
-
-      var logoMap = {};
-      iptvCache.logos.forEach(function (l) {
-        if (l.in_use && !logoMap[l.channel]) {
-          logoMap[l.channel] = l.url;
-        }
       });
 
       var categoryMap = {};
@@ -2292,11 +2445,10 @@
         categoryMap[c.id] = c.name;
       });
 
-      // Build channel map
-      var channelMap = {};
+      // Initialize all channels from channels.json
       iptvCache.channels.forEach(function (ch) {
         if (ch.closed || ch.is_nsfw) return;
-        channelMap[ch.id] = {
+        iptvCache.channelMap[ch.id] = {
           id: ch.id,
           name: ch.name,
           country: ch.country,
@@ -2304,43 +2456,63 @@
           flag: countryMap[ch.country] ? countryMap[ch.country].flag : '',
           categories: ch.categories || [],
           categoryNames: (ch.categories || []).map(function (cid) { return categoryMap[cid] || cid; }),
-          logo: logoMap[ch.id] || '',
+          logo: '',
           streams: []
         };
       });
 
-      // Attach streams to channels
-      iptvCache.streams.forEach(function (s) {
-        if (s.channel && channelMap[s.channel]) {
-          channelMap[s.channel].streams.push({
-            url: s.url,
-            quality: s.quality || '',
-            user_agent: s.user_agent || '',
-            referrer: s.referrer || ''
-          });
-        }
-      });
+      // Merge initial streams
+      mergeM3UStreams(idM3uStreams, 'ID');
+      mergeM3UStreams(sportsM3uStreams);
+      mergeM3UStreams(extraIdStreams, 'ID');
 
-      // Filter to channels that have at least one stream
-      var merged = [];
-      Object.keys(channelMap).forEach(function (id) {
-        if (channelMap[id].streams.length > 0) {
-          merged.push(channelMap[id]);
-        }
-      });
+      iptvCache.loadedCountries['ID'] = true;
+      iptvCache.loadedCategories['sports'] = true;
 
-      // Sort by country name, then channel name
-      merged.sort(function (a, b) {
-        if (a.countryName < b.countryName) return -1;
-        if (a.countryName > b.countryName) return 1;
-        if (a.name < b.name) return -1;
-        if (a.name > b.name) return 1;
-        return 0;
-      });
-
-      iptvCache.merged = merged;
+      updateMergedChannels();
       iptvCache.loading = false;
-      return merged;
+      return iptvCache.merged;
+    });
+
+    return iptvCache.initPromise;
+  }
+
+  function loadCountryStreams(countryCode) {
+    if (!countryCode) return Promise.resolve();
+    if (iptvCache.loadedCountries[countryCode]) return Promise.resolve();
+
+    var loader = document.getElementById('livetv-loading');
+    if (loader) {
+      loader.querySelector('p').textContent = 'Loading streams for selected country...';
+      loader.style.display = 'flex';
+    }
+
+    var url = 'https://iptv-org.github.io/iptv/countries/' + countryCode.toLowerCase() + '.m3u';
+    return fetchM3U(url).then(function (streams) {
+      mergeM3UStreams(streams, countryCode);
+      iptvCache.loadedCountries[countryCode] = true;
+      updateMergedChannels();
+      if (loader) loader.style.display = 'none';
+    });
+  }
+
+  function loadCategoryStreams(catId) {
+    if (!catId) return Promise.resolve();
+    var cleanCatId = catId.toLowerCase();
+    if (iptvCache.loadedCategories[cleanCatId]) return Promise.resolve();
+
+    var loader = document.getElementById('livetv-loading');
+    if (loader) {
+      loader.querySelector('p').textContent = 'Loading streams for selected category...';
+      loader.style.display = 'flex';
+    }
+
+    var url = 'https://iptv-org.github.io/iptv/categories/' + cleanCatId + '.m3u';
+    return fetchM3U(url).then(function (streams) {
+      mergeM3UStreams(streams);
+      iptvCache.loadedCategories[cleanCatId] = true;
+      updateMergedChannels();
+      if (loader) loader.style.display = 'none';
     });
   }
 
@@ -2411,7 +2583,6 @@
       });
 
       var countryCodes = Object.keys(countryCount);
-      // Sort: popular first, then by count
       countryCodes.sort(function (a, b) {
         var aP = POPULAR_COUNTRIES.indexOf(a);
         var bP = POPULAR_COUNTRIES.indexOf(b);
@@ -2446,7 +2617,6 @@
       });
       catMenu.innerHTML = catHtml;
 
-      // Setup dropdown interactions
       setupLiveTVDropdowns();
 
       // Search input
@@ -2467,7 +2637,6 @@
         renderLiveTVGrid(true);
       });
 
-      // Initial render
       renderLiveTVGrid();
     });
   }
@@ -2499,7 +2668,10 @@
       document.getElementById('livetv-country-toggle').textContent = opt.textContent.trim();
       liveTVState.country = val;
       liveTVState.page = 1;
-      renderLiveTVGrid();
+
+      loadCountryStreams(val).then(function () {
+        renderLiveTVGrid();
+      });
     });
 
     // Category options
@@ -2516,10 +2688,12 @@
       document.getElementById('livetv-cat-toggle').textContent = opt.textContent.trim();
       liveTVState.category = val;
       liveTVState.page = 1;
-      renderLiveTVGrid();
+
+      loadCategoryStreams(val).then(function () {
+        renderLiveTVGrid();
+      });
     });
 
-    // Close on outside click
     document.addEventListener('click', function (e) {
       dropdowns.forEach(function (dd) {
         if (!dd.contains(e.target)) dd.classList.remove('open');
@@ -2592,10 +2766,7 @@
       grid.appendChild(card);
     });
 
-    // Stats
     stats.textContent = total + ' channel' + (total !== 1 ? 's' : '') + ' found';
-
-    // Load more visibility
     loadMoreWrap.style.display = end < total ? 'flex' : 'none';
   }
 
@@ -2646,7 +2817,6 @@
 
       document.title = channel.name + ' \u2014 Live TV \u2014 Hisyam TV';
 
-      // Update channel info
       var infoEl = document.getElementById('livetv-player-info');
       var logoHtml = channel.logo
         ? '<img src="' + channel.logo + '" alt="" class="livetv-pinfo-logo" onerror="this.style.display=\'none\'">'
@@ -2663,7 +2833,7 @@
 
       var qualityBadges = channel.streams.map(function (s, idx) {
         return '<button class="livetv-quality-btn' + (idx === 0 ? ' active' : '') + '" data-idx="' + idx + '">' +
-          (s.quality || 'Stream ' + (idx + 1)) +
+          (s.quality || 'Sumber ' + (idx + 1)) +
         '</button>';
       }).join('');
 
@@ -2679,11 +2849,26 @@
             '<div class="livetv-pinfo-cats">' + catBadges + '</div>' +
           '</div>' +
         '</div>' +
-        (channel.streams.length > 1
-          ? '<div class="livetv-quality-wrap"><span class="livetv-quality-label">Streams:</span>' + qualityBadges + '</div>'
-          : '');
+        '<div class="livetv-controls-row">' +
+          (channel.streams.length > 1
+            ? '<div class="livetv-quality-wrap"><span class="livetv-quality-label">Sources:</span>' + qualityBadges + '</div>'
+            : '') +
+          '<div class="livetv-proxy-wrap">' +
+            '<label class="livetv-proxy-label">' +
+              '<input type="checkbox" id="livetv-proxy-toggle" ' + (useCorsProxy ? 'checked' : '') + '> Gunakan CORS Proxy (Bypass Blokir)' +
+            '</label>' +
+          '</div>' +
+        '</div>';
 
-      // Quality/stream switcher
+      var proxyToggle = infoEl.querySelector('#livetv-proxy-toggle');
+      if (proxyToggle) {
+        proxyToggle.addEventListener('change', function () {
+          useCorsProxy = this.checked;
+          showToast(useCorsProxy ? 'CORS Proxy diaktifkan (Bypass)' : 'CORS Proxy dimatikan');
+          playHLSStream(channel.streams[currentStreamIdx]);
+        });
+      }
+
       var currentStreamIdx = 0;
       var qualityBtns = infoEl.querySelectorAll('.livetv-quality-btn');
       qualityBtns.forEach(function (btn) {
@@ -2693,10 +2878,29 @@
           qualityBtns.forEach(function (b) { b.classList.remove('active'); });
           this.classList.add('active');
           playHLSStream(channel.streams[idx]);
+          updateErrorOverlay();
         });
       });
 
-      // Try next stream button
+      function updateErrorOverlay() {
+        var errorEl = document.getElementById('livetv-player-error');
+        if (!errorEl) return;
+        var tryNextBtn = errorEl.querySelector('#livetv-try-next');
+        var errorText = errorEl.querySelector('p');
+
+        if (channel.streams.length > 1) {
+          if (tryNextBtn) {
+            tryNextBtn.style.display = 'inline-block';
+            var nextIdx = (currentStreamIdx + 1) % channel.streams.length;
+            tryNextBtn.textContent = 'Coba Sumber ' + (nextIdx + 1) + ' (Dari ' + channel.streams.length + ')';
+          }
+          if (errorText) errorText.textContent = 'Sumber ' + (currentStreamIdx + 1) + ' tidak tersedia.';
+        } else {
+          if (tryNextBtn) tryNextBtn.style.display = 'none';
+          if (errorText) errorText.innerHTML = 'Stream tidak tersedia.<br><small style="color:var(--text-secondary);font-size:12px;margin-top:8px;display:block;">Saluran ini hanya memiliki 1 sumber. Coba aktifkan "CORS Proxy" di bawah player atau gunakan VPN.</small>';
+        }
+      }
+
       document.getElementById('livetv-try-next').addEventListener('click', function () {
         currentStreamIdx = (currentStreamIdx + 1) % channel.streams.length;
         qualityBtns.forEach(function (b) { b.classList.remove('active'); });
@@ -2705,12 +2909,12 @@
         document.getElementById('livetv-player-error').style.display = 'none';
         document.getElementById('livetv-player-overlay').style.display = 'flex';
         playHLSStream(channel.streams[currentStreamIdx]);
+        updateErrorOverlay();
       });
 
-      // Play first stream
       playHLSStream(channel.streams[0]);
+      updateErrorOverlay();
 
-      // Related channels (same country + category)
       var related = channels.filter(function (ch) {
         if (ch.id === channelId) return false;
         if (ch.country === channel.country) return true;
@@ -2750,7 +2954,6 @@
     var errorEl = document.getElementById('livetv-player-error');
     if (!video) return;
 
-    // Destroy previous HLS instance
     if (window._hlsInstance) {
       window._hlsInstance.destroy();
       window._hlsInstance = null;
@@ -2760,17 +2963,12 @@
     errorEl.style.display = 'none';
 
     var url = streamInfo.url;
+    if (useCorsProxy) {
+      url = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    }
 
     if (Hls.isSupported()) {
       var hlsConfig = {};
-      if (streamInfo.referrer) {
-        // Note: referrer headers can't be set via JS for security, but we try xhrSetup
-        hlsConfig.xhrSetup = function (xhr) {
-          if (streamInfo.user_agent) {
-            // User-Agent can't be set in browser XHR, but leave for documentation
-          }
-        };
-      }
       var hls = new Hls(hlsConfig);
       window._hlsInstance = hls;
 
@@ -2790,7 +2988,6 @@
         }
       });
 
-      // Timeout: if not playing within 15s, show error
       setTimeout(function () {
         if (overlay.style.display !== 'none' && video.readyState < 2) {
           overlay.style.display = 'none';
@@ -2799,7 +2996,6 @@
       }, 15000);
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS
       video.src = url;
       video.addEventListener('loadedmetadata', function () {
         overlay.style.display = 'none';

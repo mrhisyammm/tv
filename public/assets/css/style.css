@@ -2779,6 +2779,48 @@ body {
   border-color: #00e5ff;
 }
 
+/* ── Proxy & Controls row ── */
+.livetv-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.livetv-proxy-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.livetv-proxy-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+  transition: color var(--transition-fast);
+}
+
+.livetv-proxy-label input[type="checkbox"] {
+  accent-color: #00e5ff;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.livetv-proxy-label:hover {
+  color: var(--text-primary);
+}
+
 /* ── Related channels ── */
 .livetv-related {
   margin-top: 32px;
