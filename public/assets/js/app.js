@@ -2875,11 +2875,11 @@
     loadMoreWrap.style.display = end < total ? 'flex' : 'none';
   }
 
-  // Iframe embed player URLs — these handle CORS on their server side
+  // Iframe embed player URLs — free players that handle CORS server-side
   var EMBED_PLAYERS = [
-    { name: 'Player 1', url: function (src) { return 'https://m3u-ip.tv/?url=' + encodeURIComponent(src); } },
-    { name: 'Player 2', url: function (src) { return 'https://www.hlsplayer.org/play?url=' + encodeURIComponent(src); } },
-    { name: 'Player 3', url: function (src) { return 'https://player.livepush.io/hlsplayer?url=' + encodeURIComponent(src); } }
+    { name: 'HLS Player', url: function (src) { return 'https://hlsplayer.online/embed?url=' + encodeURIComponent(src); } },
+    { name: 'LivePush', url: function (src) { return 'https://player.livepush.io/hlsplayer?url=' + encodeURIComponent(src); } },
+    { name: 'HLS.js Demo', url: function (src) { return 'https://hls-js.netlify.app/demo/?src=' + encodeURIComponent(src); } }
   ];
 
   function showLiveTVPlayer(channelId) {
