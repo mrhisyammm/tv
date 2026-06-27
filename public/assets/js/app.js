@@ -2847,6 +2847,13 @@
     loadMoreWrap.style.display = end < total ? 'flex' : 'none';
   }
 
+  // Iframe embed player URLs — these handle CORS on their server side
+  var EMBED_PLAYERS = [
+    { name: 'Player 1', url: function (src) { return 'https://m3u-ip.tv/?url=' + encodeURIComponent(src); } },
+    { name: 'Player 2', url: function (src) { return 'https://www.hlsplayer.org/play?url=' + encodeURIComponent(src); } },
+    { name: 'Player 3', url: function (src) { return 'https://player.livepush.io/hlsplayer?url=' + encodeURIComponent(src); } }
+  ];
+
   function showLiveTVPlayer(channelId) {
     showView('livetv-view');
     var container = document.getElementById('livetv-view');
@@ -2860,15 +2867,10 @@
           '</button>' +
         '</div>' +
         '<div class="livetv-player-wrap">' +
-          '<video id="livetv-video" class="livetv-video" controls autoplay playsinline></video>' +
+          '<iframe id="livetv-iframe" class="livetv-iframe" allowfullscreen allow="autoplay; encrypted-media" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" frameborder="0"></iframe>' +
           '<div class="livetv-player-overlay" id="livetv-player-overlay">' +
             '<div class="livetv-spinner"></div>' +
             '<p>Loading stream...</p>' +
-          '</div>' +
-          '<div class="livetv-player-error" id="livetv-player-error" style="display:none;">' +
-            '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
-            '<p>Stream unavailable</p>' +
-            '<button class="btn-try-next" id="livetv-try-next">Try Next Stream</button>' +
           '</div>' +
         '</div>' +
         '<div class="livetv-player-info" id="livetv-player-info">' +
@@ -2908,10 +2910,16 @@
         return '<span class="' + badgeClass + '">' + c + '</span>';
       }).join('');
 
-      var qualityBadges = channel.streams.map(function (s, idx) {
+      // Stream source buttons
+      var streamBtns = channel.streams.map(function (s, idx) {
         return '<button class="livetv-quality-btn' + (idx === 0 ? ' active' : '') + '" data-idx="' + idx + '">' +
           (s.quality || 'Sumber ' + (idx + 1)) +
         '</button>';
+      }).join('');
+
+      // Player switcher buttons
+      var playerBtns = EMBED_PLAYERS.map(function (p, idx) {
+        return '<button class="livetv-quality-btn' + (idx === 0 ? ' active' : '') + '" data-pidx="' + idx + '">' + p.name + '</button>';
       }).join('');
 
       infoEl.innerHTML =
@@ -2928,70 +2936,62 @@
         '</div>' +
         '<div class="livetv-controls-row">' +
           (channel.streams.length > 1
-            ? '<div class="livetv-quality-wrap"><span class="livetv-quality-label">Sources:</span>' + qualityBadges + '</div>'
+            ? '<div class="livetv-quality-wrap"><span class="livetv-quality-label">Sumber:</span>' + streamBtns + '</div>'
             : '') +
-          '<div class="livetv-proxy-wrap">' +
-            '<label class="livetv-proxy-label">' +
-              '<input type="checkbox" id="livetv-proxy-toggle" ' + (useCorsProxy ? 'checked' : '') + '> Gunakan CORS Proxy (Bypass Blokir)' +
-            '</label>' +
-          '</div>' +
+          '<div class="livetv-quality-wrap"><span class="livetv-quality-label">Player:</span>' + playerBtns + '</div>' +
         '</div>';
 
-      var proxyToggle = infoEl.querySelector('#livetv-proxy-toggle');
-      if (proxyToggle) {
-        proxyToggle.addEventListener('change', function () {
-          useCorsProxy = this.checked;
-          showToast(useCorsProxy ? 'CORS Proxy diaktifkan (Bypass)' : 'CORS Proxy dimatikan');
-          playHLSStream(channel.streams[currentStreamIdx]);
-        });
-      }
-
       var currentStreamIdx = 0;
-      var qualityBtns = infoEl.querySelectorAll('.livetv-quality-btn');
-      qualityBtns.forEach(function (btn) {
+      var currentPlayerIdx = 0;
+
+      function loadIframePlayer() {
+        var iframe = document.getElementById('livetv-iframe');
+        var overlay = document.getElementById('livetv-player-overlay');
+        if (!iframe) return;
+
+        overlay.style.display = 'flex';
+        var streamUrl = channel.streams[currentStreamIdx].url;
+        var embedUrl = EMBED_PLAYERS[currentPlayerIdx].url(streamUrl);
+        iframe.src = embedUrl;
+
+        iframe.onload = function () {
+          overlay.style.display = 'none';
+        };
+
+        // Timeout fallback
+        setTimeout(function () {
+          overlay.style.display = 'none';
+        }, 5000);
+      }
+
+      // Stream source switcher
+      var srcBtns = infoEl.querySelectorAll('.livetv-quality-btn[data-idx]');
+      srcBtns.forEach(function (btn) {
         btn.addEventListener('click', function () {
-          var idx = parseInt(this.getAttribute('data-idx'));
-          currentStreamIdx = idx;
-          qualityBtns.forEach(function (b) { b.classList.remove('active'); });
+          currentStreamIdx = parseInt(this.getAttribute('data-idx'));
+          srcBtns.forEach(function (b) { b.classList.remove('active'); });
           this.classList.add('active');
-          playHLSStream(channel.streams[idx]);
-          updateErrorOverlay();
+          loadIframePlayer();
+          showToast('Sumber ' + (currentStreamIdx + 1) + ' dipilih');
         });
       });
 
-      function updateErrorOverlay() {
-        var errorEl = document.getElementById('livetv-player-error');
-        if (!errorEl) return;
-        var tryNextBtn = errorEl.querySelector('#livetv-try-next');
-        var errorText = errorEl.querySelector('p');
-
-        if (channel.streams.length > 1) {
-          if (tryNextBtn) {
-            tryNextBtn.style.display = 'inline-block';
-            var nextIdx = (currentStreamIdx + 1) % channel.streams.length;
-            tryNextBtn.textContent = 'Coba Sumber ' + (nextIdx + 1) + ' (Dari ' + channel.streams.length + ')';
-          }
-          if (errorText) errorText.textContent = 'Sumber ' + (currentStreamIdx + 1) + ' tidak tersedia.';
-        } else {
-          if (tryNextBtn) tryNextBtn.style.display = 'none';
-          if (errorText) errorText.innerHTML = 'Stream tidak tersedia.<br><small style="color:var(--text-secondary);font-size:12px;margin-top:8px;display:block;">Saluran ini hanya memiliki 1 sumber. Coba aktifkan "CORS Proxy" di bawah player atau gunakan VPN.</small>';
-        }
-      }
-
-      document.getElementById('livetv-try-next').addEventListener('click', function () {
-        currentStreamIdx = (currentStreamIdx + 1) % channel.streams.length;
-        qualityBtns.forEach(function (b) { b.classList.remove('active'); });
-        var nextBtn = infoEl.querySelector('.livetv-quality-btn[data-idx="' + currentStreamIdx + '"]');
-        if (nextBtn) nextBtn.classList.add('active');
-        document.getElementById('livetv-player-error').style.display = 'none';
-        document.getElementById('livetv-player-overlay').style.display = 'flex';
-        playHLSStream(channel.streams[currentStreamIdx]);
-        updateErrorOverlay();
+      // Player switcher
+      var plBtns = infoEl.querySelectorAll('.livetv-quality-btn[data-pidx]');
+      plBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          currentPlayerIdx = parseInt(this.getAttribute('data-pidx'));
+          plBtns.forEach(function (b) { b.classList.remove('active'); });
+          this.classList.add('active');
+          loadIframePlayer();
+          showToast(EMBED_PLAYERS[currentPlayerIdx].name + ' dipilih');
+        });
       });
 
-      playHLSStream(channel.streams[0]);
-      updateErrorOverlay();
+      // Play first stream with first player
+      loadIframePlayer();
 
+      // Related channels (same country + category)
       var related = channels.filter(function (ch) {
         if (ch.id === channelId) return false;
         if (ch.country === channel.country) return true;
@@ -3023,70 +3023,6 @@
         relGrid.appendChild(rcard);
       });
     });
-  }
-
-  function playHLSStream(streamInfo) {
-    var video = document.getElementById('livetv-video');
-    var overlay = document.getElementById('livetv-player-overlay');
-    var errorEl = document.getElementById('livetv-player-error');
-    if (!video) return;
-
-    if (window._hlsInstance) {
-      window._hlsInstance.destroy();
-      window._hlsInstance = null;
-    }
-
-    overlay.style.display = 'flex';
-    errorEl.style.display = 'none';
-
-    var url = streamInfo.url;
-    if (useCorsProxy) {
-      url = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-    }
-
-    if (Hls.isSupported()) {
-      var hlsConfig = {};
-      var hls = new Hls(hlsConfig);
-      window._hlsInstance = hls;
-
-      hls.loadSource(url);
-      hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, function () {
-        overlay.style.display = 'none';
-        video.play().catch(function () {});
-      });
-
-      hls.on(Hls.Events.ERROR, function (event, data) {
-        if (data.fatal) {
-          overlay.style.display = 'none';
-          errorEl.style.display = 'flex';
-          console.warn('[HLS] Fatal error', data.type, data.details);
-        }
-      });
-
-      setTimeout(function () {
-        if (overlay.style.display !== 'none' && video.readyState < 2) {
-          overlay.style.display = 'none';
-          errorEl.style.display = 'flex';
-        }
-      }, 15000);
-
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = url;
-      video.addEventListener('loadedmetadata', function () {
-        overlay.style.display = 'none';
-        video.play().catch(function () {});
-      });
-      video.addEventListener('error', function () {
-        overlay.style.display = 'none';
-        errorEl.style.display = 'flex';
-      });
-    } else {
-      overlay.style.display = 'none';
-      errorEl.style.display = 'flex';
-      errorEl.querySelector('p').textContent = 'HLS not supported in this browser';
-    }
   }
 
   // ============================================================
