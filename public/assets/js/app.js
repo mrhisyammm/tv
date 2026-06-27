@@ -2528,15 +2528,11 @@
             iptvCache.loadedCategories['_all'] = true;
             updateMergedChannels();
 
-            // Re-render grid if user is still on Live TV
+            // Re-render grid + rebuild filters if user is still on Live TV
             var route = parseRoute();
             if (route.page === 'livetv' && !route.param) {
+              rebuildLiveTVFilters();
               renderLiveTVGrid();
-              var statsEl2 = document.getElementById('livetv-stats');
-              if (statsEl2) {
-                var filtered = getFilteredLiveTVChannels();
-                statsEl2.textContent = filtered.length + ' channels found';
-              }
             }
           });
         })
@@ -2788,6 +2784,62 @@
     });
   }
 
+  function rebuildLiveTVFilters() {
+    var channels = iptvCache.merged;
+    if (!channels || !channels.length) return;
+
+    // Rebuild country counts
+    var countryCount = {};
+    var countryNames = {};
+    var countryFlags = {};
+    channels.forEach(function (ch) {
+      countryCount[ch.country] = (countryCount[ch.country] || 0) + 1;
+      countryNames[ch.country] = ch.countryName;
+      countryFlags[ch.country] = ch.flag;
+    });
+
+    var countryCodes = Object.keys(countryCount);
+    countryCodes.sort(function (a, b) {
+      var aP = POPULAR_COUNTRIES.indexOf(a);
+      var bP = POPULAR_COUNTRIES.indexOf(b);
+      if (aP !== -1 && bP !== -1) return aP - bP;
+      if (aP !== -1) return -1;
+      if (bP !== -1) return 1;
+      return (countryCount[b] || 0) - (countryCount[a] || 0);
+    });
+
+    var countryMenu = document.getElementById('livetv-country-menu');
+    if (countryMenu) {
+      var selCountry = liveTVState.country;
+      var countryHtml = '<div class="single-select-option' + (!selCountry ? ' selected' : '') + '" data-value="">All Countries (' + channels.length + ')</div>';
+      countryCodes.forEach(function (code) {
+        countryHtml += '<div class="single-select-option' + (selCountry === code ? ' selected' : '') + '" data-value="' + code + '">' +
+          (countryFlags[code] || '') + ' ' + (countryNames[code] || code) + ' (' + countryCount[code] + ')' +
+        '</div>';
+      });
+      countryMenu.innerHTML = countryHtml;
+    }
+
+    // Rebuild category counts
+    var catCount = {};
+    channels.forEach(function (ch) {
+      ch.categoryNames.forEach(function (cat) {
+        catCount[cat] = (catCount[cat] || 0) + 1;
+      });
+    });
+    var catNames = Object.keys(catCount).sort(function (a, b) { return (catCount[b] || 0) - (catCount[a] || 0); });
+
+    var catMenu = document.getElementById('livetv-cat-menu');
+    if (catMenu) {
+      var selCat = liveTVState.category;
+      var catHtml = '<div class="single-select-option' + (!selCat ? ' selected' : '') + '" data-value="">All Categories</div>';
+      catNames.forEach(function (cat) {
+        catHtml += '<div class="single-select-option' + (selCat === cat ? ' selected' : '') + '" data-value="' + cat + '">' + cat + ' (' + catCount[cat] + ')</div>';
+      });
+      catMenu.innerHTML = catHtml;
+    }
+  }
+
   function renderLiveTVGrid(append) {
     var grid = document.getElementById('livetv-grid');
     var stats = document.getElementById('livetv-stats');
@@ -2888,8 +2940,8 @@
 
     loadIPTVData().then(function (channels) {
       var channel = channels.find(function (ch) { return ch.id === channelId; });
-      if (!channel) {
-        showToast('Channel not found');
+      if (!channel || !channel.streams || channel.streams.length === 0) {
+        showToast('Channel tidak tersedia — tidak ada stream aktif');
         navigate('#livetv');
         return;
       }
