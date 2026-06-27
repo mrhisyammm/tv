@@ -2875,11 +2875,11 @@
     loadMoreWrap.style.display = end < total ? 'flex' : 'none';
   }
 
-  // Iframe embed player URLs — free players that handle CORS server-side
+  // Player URLs — our own player.html is primary (same-origin, auto CORS proxy retry)
   var EMBED_PLAYERS = [
-    { name: 'HLS Player', url: function (src) { return 'https://hlsplayer.online/embed?url=' + encodeURIComponent(src); } },
-    { name: 'LivePush', url: function (src) { return 'https://player.livepush.io/hlsplayer?url=' + encodeURIComponent(src); } },
-    { name: 'HLS.js Demo', url: function (src) { return 'https://hls-js.netlify.app/demo/?src=' + encodeURIComponent(src); } }
+    { name: 'Auto', url: function (src) { return 'player.html?src=' + encodeURIComponent(src); } },
+    { name: 'Proxy 1', url: function (src) { return 'player.html?src=' + encodeURIComponent(src) + '&proxy=allorigins'; } },
+    { name: 'Proxy 2', url: function (src) { return 'player.html?src=' + encodeURIComponent(src) + '&proxy=corsproxy'; } }
   ];
 
   function showLiveTVPlayer(channelId) {
