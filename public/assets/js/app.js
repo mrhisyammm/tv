@@ -2354,16 +2354,25 @@
           ch.categoryNames.push(s.group);
         }
       } else {
-        // Create dynamic channel
+        // Create channel from M3U entry — every entry here has a stream URL
         var dynamicId = s.tvgId || s.name;
         if (!dynamicId) continue;
 
         if (!iptvCache.channelMap[dynamicId]) {
-          var country = forceCountryCode || 'Unknown';
-          var countryName = 'Other';
+          // Extract country code from tvg-id (format: "ChannelName.CC")
+          var country = forceCountryCode || '';
+          if (!country && s.tvgId) {
+            var dotIdx = s.tvgId.lastIndexOf('.');
+            if (dotIdx !== -1) {
+              country = s.tvgId.substring(dotIdx + 1).toUpperCase();
+            }
+          }
+          if (!country) country = 'INT';
+
+          var countryName = country;
           var flag = '\uD83C\uDF10';
-          if (forceCountryCode && iptvCache.countries) {
-            var cObj = iptvCache.countries.find(function(c) { return c.code === forceCountryCode; });
+          if (iptvCache.countries) {
+            var cObj = iptvCache.countries.find(function(c) { return c.code === country; });
             if (cObj) {
               countryName = cObj.name;
               flag = cObj.flag;
@@ -2454,54 +2463,24 @@
 
     iptvCache.loading = true;
 
-    // Phase 1: Load metadata + small priority playlists FAST (UI appears quickly)
+    // Phase 1: Load countries metadata + priority M3U playlists (fast UI)
+    // NO channels.json — we build channels purely from M3U (every entry has a stream)
     iptvCache.initPromise = Promise.all([
-      fetchIPTV('channels.json'),
       fetchIPTV('countries.json'),
-      fetchIPTV('categories.json'),
       fetchM3U('https://iptv-org.github.io/iptv/countries/id.m3u'),
       fetchM3U('https://iptv-org.github.io/iptv/categories/sports.m3u'),
       fetchM3U('https://raw.githubusercontent.com/riotryulianto/iptv-playlists/main/iptv.m3u')
     ]).then(function (results) {
-      iptvCache.channels = results[0];
-      iptvCache.countries = results[1];
-      iptvCache.categories = results[2];
+      iptvCache.countries = results[0];
 
-      var idStreams = results[3];
-      var sportsStreams = results[4];
-      var extraIdStreams = results[5];
+      var idStreams = results[1];
+      var sportsStreams = results[2];
+      var extraIdStreams = results[3];
 
-      // Build country & category maps
-      var countryMap = {};
-      iptvCache.countries.forEach(function (c) {
-        countryMap[c.code] = c;
-      });
-
-      var categoryMap = {};
-      iptvCache.categories.forEach(function (c) {
-        categoryMap[c.id] = c.name;
-      });
-
-      // Initialize all channels from channels.json
-      iptvCache.channels.forEach(function (ch) {
-        if (ch.closed || ch.is_nsfw) return;
-        iptvCache.channelMap[ch.id] = {
-          id: ch.id,
-          name: ch.name,
-          country: ch.country,
-          countryName: countryMap[ch.country] ? countryMap[ch.country].name : ch.country,
-          flag: countryMap[ch.country] ? countryMap[ch.country].flag : '',
-          categories: ch.categories || [],
-          categoryNames: (ch.categories || []).map(function (cid) { return categoryMap[cid] || cid; }),
-          logo: '',
-          streams: []
-        };
-      });
-
-      // Build fast name lookup
+      // Build fast name lookup (empty initially — filled by mergeM3UStreams)
       buildNameLookup();
 
-      // Merge priority playlists (small, instant)
+      // Merge priority playlists — channels are created on-the-fly from M3U data
       mergeM3UStreams(idStreams, 'ID');
       mergeM3UStreams(sportsStreams);
       mergeM3UStreams(extraIdStreams, 'ID');
@@ -2518,17 +2497,14 @@
         .then(function (text) {
           var allStreams = parseM3U(text);
 
-          // Update loading indicator
           var statsEl = document.getElementById('livetv-stats');
           if (statsEl) statsEl.textContent = iptvCache.merged.length + ' channels (loading more...)';
 
-          // Merge in batches to avoid freezing
           mergeM3UStreamsBatched(allStreams, null, 500, function () {
             iptvCache.loadedCountries['_all'] = true;
             iptvCache.loadedCategories['_all'] = true;
             updateMergedChannels();
 
-            // Re-render grid + rebuild filters if user is still on Live TV
             var route = parseRoute();
             if (route.page === 'livetv' && !route.param) {
               rebuildLiveTVFilters();
